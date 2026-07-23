@@ -1,0 +1,135 @@
+name: Build PhytoNote APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Create Capacitor project
+      run: |
+        echo '{
+          "name": "PhytoNote",
+          "version": "1.0.0",
+          "scripts": {
+            "build": "echo \"Building PhytoNote...\""
+          },
+          "dependencies": {
+            "@capacitor/filesystem": "^6.0.0"
+          },
+          "devDependencies": {
+            "@capacitor/cli": "^6.0.0",
+            "@capacitor/android": "^6.0.0"
+          }
+        }' > package.json
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Copy web assets BEFORE Capacitor init
+      run: |
+        mkdir -p www
+        cp -r assets/* www/
+        echo "✅ All files copied to www!"
+
+    - name: Initialize Capacitor and add Android
+      run: |
+        npx cap init "PhytoNote" "com.phytonote.app" --web-dir www
+        npx cap add android
+        npx cap update
+        npx cap sync
+
+    - name: Setup app icons
+      run: |
+        echo "🎨 Setting up app icons..."
+        
+        mkdir -p android/app/src/main/res/mipmap-mdpi
+        mkdir -p android/app/src/main/res/mipmap-hdpi
+        mkdir -p android/app/src/main/res/mipmap-xhdpi
+        mkdir -p android/app/src/main/res/mipmap-xxhdpi
+        mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+        
+        ICON_PATH="assets/phytonote/icons"
+        
+        if [ -d "$ICON_PATH" ]; then
+          echo "📂 Found icons in: $ICON_PATH"
+          
+          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          
+          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          
+          echo "✅ Icons installed!"
+        fi
+
+    - name: Build debug APK
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew assembleDebug
+
+    - name: Create keystore
+      run: |
+        keytool -genkey -v \
+          -keystore phytonote.keystore \
+          -alias phytonote \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass phytonote123 \
+          -keypass phytonote123 \
+          -dname "CN=PhytoNote, OU=App, O=PhytoNote, L=City, S=State, C=US"
+
+    - name: Install apksigner
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apksigner
+
+    - name: Sign the APK
+      run: |
+        apksigner sign \
+          --ks phytonote.keystore \
+          --ks-pass pass:phytonote123 \
+          --key-pass pass:phytonote123 \
+          android/app/build/outputs/apk/debug/app-debug.apk
+        
+        mkdir -p android/app/build/outputs/apk/release/
+        cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/release/app-release.apk
+        
+        echo "✅ APK signed successfully!"
+
+    - name: Verify APK signature
+      run: |
+        apksigner verify android/app/build/outputs/apk/release/app-release.apk
+        echo "✅ APK signature verified!"
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: phytonote-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 7
