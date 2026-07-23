@@ -1,4 +1,4 @@
-name: Build PhytoNote APK
+name: Build PhotoNote APK
 
 on:
   push:
@@ -26,10 +26,10 @@ jobs:
     - name: Create Capacitor project
       run: |
         echo '{
-          "name": "PhytoNote",
+          "name": "PhotoNote",
           "version": "1.0.0",
           "scripts": {
-            "build": "echo \"Building PhytoNote...\""
+            "build": "echo \"Building PhotoNote...\""
           },
           "dependencies": {
             "@capacitor/filesystem": "^6.0.0"
@@ -43,7 +43,7 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Copy web assets BEFORE Capacitor init
+    - name: Copy web assets
       run: |
         mkdir -p www
         cp -r assets/* www/
@@ -51,7 +51,7 @@ jobs:
 
     - name: Initialize Capacitor and add Android
       run: |
-        npx cap init "PhytoNote" "com.phytonote.app" --web-dir www
+        npx cap init "PhotoNote" "com.phonote.app" --web-dir www
         npx cap add android
         npx cap update
         npx cap sync
@@ -66,7 +66,7 @@ jobs:
         mkdir -p android/app/src/main/res/mipmap-xxhdpi
         mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        ICON_PATH="assets/phytonote/icons"
+        ICON_PATH="assets/icon"
         
         if [ -d "$ICON_PATH" ]; then
           echo "📂 Found icons in: $ICON_PATH"
@@ -84,6 +84,8 @@ jobs:
           [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           
           echo "✅ Icons installed!"
+        else
+          echo "⚠️ Icon folder not found, using default Capacitor icons"
         fi
 
     - name: Build debug APK
@@ -95,14 +97,14 @@ jobs:
     - name: Create keystore
       run: |
         keytool -genkey -v \
-          -keystore phytonote.keystore \
-          -alias phytonote \
+          -keystore phonote.keystore \
+          -alias phonote \
           -keyalg RSA \
           -keysize 2048 \
           -validity 10000 \
-          -storepass phytonote123 \
-          -keypass phytonote123 \
-          -dname "CN=PhytoNote, OU=App, O=PhytoNote, L=City, S=State, C=US"
+          -storepass phonote123 \
+          -keypass phonote123 \
+          -dname "CN=PhotoNote, OU=App, O=PhotoNote, L=City, S=State, C=US"
 
     - name: Install apksigner
       run: |
@@ -112,9 +114,9 @@ jobs:
     - name: Sign the APK
       run: |
         apksigner sign \
-          --ks phytonote.keystore \
-          --ks-pass pass:phytonote123 \
-          --key-pass pass:phytonote123 \
+          --ks phonote.keystore \
+          --ks-pass pass:phonote123 \
+          --key-pass pass:phonote123 \
           android/app/build/outputs/apk/debug/app-debug.apk
         
         mkdir -p android/app/build/outputs/apk/release/
@@ -130,6 +132,6 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: phytonote-apk
+        name: phonote-apk
         path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 7
