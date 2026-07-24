@@ -157,34 +157,82 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
+    // СВЯЗИ С КНОПКАМИ ДОБАВЛЕНИЯ
     html += `
         <div class="slider-connections">
             <div class="connection-group">
-                <span class="connection-label">💡 Схемы (${schemes.length})</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="connection-label">💡 Схемы (${schemes.length})</span>
+                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); showAddSchemeToReference('${ref.id}')" style="padding:2px 10px;font-size:11px;width:auto;">➕ Добавить</button>
+                </div>
                 <div class="connection-items">
                     ${schemes.length > 0 ? schemes.map(s => `
-                        <span class="connection-item" onclick="closeSliderAndNavigate('schemes')">${s.name}</span>
+                        <span class="connection-item" style="${isEdit ? 'padding-right:4px;' : ''}" onclick="event.stopPropagation(); showSchemeDetail('${s.id}')">
+                            ${s.name}
+                            ${isEdit ? `<span class="remove-tag" onclick="event.stopPropagation(); removeSchemeFromReference('${ref.id}','${s.id}')" style="cursor:pointer;color:var(--text-muted);font-size:14px;margin-left:4px;">✕</span>` : ''}
+                        </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанных схем</span>'}
                 </div>
+                ${schemes.length > 0 && !isEdit ? `
+                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на схему для просмотра</div>
+                ` : ''}
             </div>
+            
             <div class="connection-group">
-                <span class="connection-label">📷 Оборудование (${equipment.length})</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="connection-label">📷 Оборудование (${equipment.length})</span>
+                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); showAddEquipmentToReference('${ref.id}')" style="padding:2px 10px;font-size:11px;width:auto;">➕ Добавить</button>
+                </div>
                 <div class="connection-items">
                     ${equipment.length > 0 ? equipment.map(e => `
-                        <span class="connection-item" onclick="closeSliderAndNavigate('equipment')">${e.name}</span>
+                        <span class="connection-item" style="${isEdit ? 'padding-right:4px;' : ''}" onclick="event.stopPropagation(); showEquipmentDetail('${e.id}')">
+                            ${e.name}
+                            ${isEdit ? `<span class="remove-tag" onclick="event.stopPropagation(); removeEquipmentFromReference('${ref.id}','${e.id}')" style="cursor:pointer;color:var(--text-muted);font-size:14px;margin-left:4px;">✕</span>` : ''}
+                        </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанного оборудования</span>'}
                 </div>
+                ${equipment.length > 0 && !isEdit ? `
+                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на оборудование для просмотра</div>
+                ` : ''}
             </div>
+            
             <div class="connection-group">
-                <span class="connection-label">📋 Шпаргалки (${cheatsheets.length})</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="connection-label">📋 Шпаргалки (${cheatsheets.length})</span>
+                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); showAddCheatsheetToReference('${ref.id}')" style="padding:2px 10px;font-size:11px;width:auto;">➕ Добавить</button>
+                </div>
                 <div class="connection-items">
                     ${cheatsheets.length > 0 ? cheatsheets.map(c => `
-                        <span class="connection-item" onclick="closeSliderAndNavigate('cheatsheets')">${c.name}</span>
+                        <span class="connection-item" style="${isEdit ? 'padding-right:4px;' : ''}" onclick="event.stopPropagation(); showCheatsheetDetail('${c.id}')">
+                            ${c.name}
+                            ${isEdit ? `<span class="remove-tag" onclick="event.stopPropagation(); removeCheatsheetFromReference('${ref.id}','${c.id}')" style="cursor:pointer;color:var(--text-muted);font-size:14px;margin-left:4px;">✕</span>` : ''}
+                        </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанных шпаргалок</span>'}
                 </div>
+                ${cheatsheets.length > 0 && !isEdit ? `
+                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на шпаргалку для просмотра</div>
+                ` : ''}
             </div>
         </div>
     `;
+    
+    // ПОДГРУЗКА СХЕМ (полноценные картинки)
+    if (schemes.length > 0 && !isEdit) {
+        html += `
+            <div style="margin-top:12px;border-top:1px solid var(--border-color);padding-top:12px;">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">💡 Схемы освещения:</div>
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;padding-right:4px;">
+                    ${schemes.map(s => `
+                        <div style="background:var(--bg-input);border-radius:8px;padding:8px;border:1px solid var(--border-color);cursor:pointer;" onclick="showSchemeDetail('${s.id}')">
+                            <div style="font-weight:500;font-size:13px;color:var(--text-primary);margin-bottom:4px;">${s.name}</div>
+                            ${s.image ? `<img src="${s.image}" style="width:100%;max-height:150px;object-fit:contain;border-radius:4px;">` : ''}
+                            ${s.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${truncate(s.description, 60)}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
     
     html += `
         <div class="slider-actions">
@@ -201,6 +249,191 @@ function renderSliderMenu(ref) {
     
     menuContent.innerHTML = html;
 }
+
+// ================================================================
+// ДОБАВЛЕНИЕ/УДАЛЕНИЕ СВЯЗЕЙ В СЛАЙДЕРЕ
+// ================================================================
+
+function showAddSchemeToReference(refId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay show';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <h2>💡 Добавить схему</h2>
+            <div class="modal-scroll">
+                <div class="checkbox-grid">
+                    ${state.schemes.map(s => `
+                        <label>
+                            <input type="checkbox" value="${s.id}" ${ref.schemeIds.includes(s.id) ? 'checked' : ''}>
+                            ${s.name}
+                        </label>
+                    `).join('')}
+                    ${state.schemes.length === 0 ? '<p style="padding:0 20px;color:#666;font-size:13px;">Нет схем. Сначала создайте схему.</p>' : ''}
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').classList.remove('show')">Отмена</button>
+                <button class="btn-save" onclick="saveSchemeLinks('${refId}', this)">Сохранить</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function saveSchemeLinks(refId, btn) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const checkboxes = btn.closest('.modal-content').querySelectorAll('input[type="checkbox"]:checked');
+    const schemeIds = [];
+    checkboxes.forEach(cb => schemeIds.push(cb.value));
+    
+    ref.schemeIds = schemeIds;
+    saveState();
+    
+    const modal = btn.closest('.modal-overlay');
+    if (modal) modal.classList.remove('show');
+    
+    renderSliderContent();
+    renderSchemes();
+    applyFilters();
+    showNotification('Схемы обновлены!');
+}
+
+function removeSchemeFromReference(refId, schemeId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    ref.schemeIds = ref.schemeIds.filter(id => id !== schemeId);
+    saveState();
+    renderSliderContent();
+    renderSchemes();
+    applyFilters();
+}
+
+function showAddEquipmentToReference(refId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay show';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <h2>📷 Добавить оборудование</h2>
+            <div class="modal-scroll">
+                <div class="checkbox-grid">
+                    ${state.equipment.map(e => `
+                        <label>
+                            <input type="checkbox" value="${e.id}" ${ref.equipmentIds.includes(e.id) ? 'checked' : ''}>
+                            ${e.name}
+                        </label>
+                    `).join('')}
+                    ${state.equipment.length === 0 ? '<p style="padding:0 20px;color:#666;font-size:13px;">Нет оборудования. Сначала добавьте оборудование.</p>' : ''}
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').classList.remove('show')">Отмена</button>
+                <button class="btn-save" onclick="saveEquipmentLinks('${refId}', this)">Сохранить</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function saveEquipmentLinks(refId, btn) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const checkboxes = btn.closest('.modal-content').querySelectorAll('input[type="checkbox"]:checked');
+    const equipmentIds = [];
+    checkboxes.forEach(cb => equipmentIds.push(cb.value));
+    
+    ref.equipmentIds = equipmentIds;
+    saveState();
+    
+    const modal = btn.closest('.modal-overlay');
+    if (modal) modal.classList.remove('show');
+    
+    renderSliderContent();
+    renderEquipment();
+    applyFilters();
+    showNotification('Оборудование обновлено!');
+}
+
+function removeEquipmentFromReference(refId, equipmentId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    ref.equipmentIds = ref.equipmentIds.filter(id => id !== equipmentId);
+    saveState();
+    renderSliderContent();
+    renderEquipment();
+    applyFilters();
+}
+
+function showAddCheatsheetToReference(refId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay show';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <h2>📋 Добавить шпаргалку</h2>
+            <div class="modal-scroll">
+                <div class="checkbox-grid">
+                    ${state.cheatsheets.map(c => `
+                        <label>
+                            <input type="checkbox" value="${c.id}" ${ref.cheatSheetIds.includes(c.id) ? 'checked' : ''}>
+                            ${c.name}
+                        </label>
+                    `).join('')}
+                    ${state.cheatsheets.length === 0 ? '<p style="padding:0 20px;color:#666;font-size:13px;">Нет шпаргалок. Сначала создайте шпаргалку.</p>' : ''}
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="this.closest('.modal-overlay').classList.remove('show')">Отмена</button>
+                <button class="btn-save" onclick="saveCheatsheetLinks('${refId}', this)">Сохранить</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function saveCheatsheetLinks(refId, btn) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const checkboxes = btn.closest('.modal-content').querySelectorAll('input[type="checkbox"]:checked');
+    const cheatSheetIds = [];
+    checkboxes.forEach(cb => cheatSheetIds.push(cb.value));
+    
+    ref.cheatSheetIds = cheatSheetIds;
+    saveState();
+    
+    const modal = btn.closest('.modal-overlay');
+    if (modal) modal.classList.remove('show');
+    
+    renderSliderContent();
+    renderCheatsheets();
+    applyFilters();
+    showNotification('Шпаргалки обновлены!');
+}
+
+function removeCheatsheetFromReference(refId, cheatsheetId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    ref.cheatSheetIds = ref.cheatSheetIds.filter(id => id !== cheatsheetId);
+    saveState();
+    renderSliderContent();
+    renderCheatsheets();
+    applyFilters();
+}
+
+// ================================================================
+// ОСТАЛЬНЫЕ ФУНКЦИИ СЛАЙДЕРА
+// ================================================================
 
 function toggleSliderMenu() {
     const menu = document.getElementById('sliderMenu');
@@ -391,6 +624,10 @@ function handleSliderSwipe() {
         }
     }
 }
+
+// ================================================================
+// МОДАЛКА ДОБАВЛЕНИЯ РЕФЕРЕНСА
+// ================================================================
 
 function showAddReferenceModal() {
     document.getElementById('referenceModalTitle').textContent = '➕ Новый референс';
