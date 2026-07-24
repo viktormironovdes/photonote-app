@@ -33,7 +33,7 @@ function navigateTo(page) {
         cheatsheets: '📋 Шпаргалки',
         profile: '👤 Профиль'
     };
-    document.getElementById('pageTitle').textContent = titles[page] || 'Фото-Шпаргалка';
+    document.getElementById('pageTitle').textContent = titles[page] || 'PhotoNote';
     
     document.getElementById('headerBackBtn').style.display = 'none';
     document.getElementById('headerEditBtn').style.display = 'none';
@@ -78,3 +78,16 @@ function showNotification(message, type = 'success') {
     };
     alert(`${icons[type] || 'ℹ️'} ${message}`);
 }
+
+// Функция для принудительного обновления при проблемах с отображением
+function forceRefreshUI() {
+    console.log('🔄 Принудительное обновление UI');
+    const activePage = state.currentPage || 'references';
+    navigateTo(activePage);
+    if (state.references.length > 0) {
+        applyFilters();
+    }
+}
+
+// Вызываем при загрузке и через 1 секунду
+setTimeout(forceRefreshUI, 1000);
