@@ -19,7 +19,8 @@ let state = {
     referenceCount: 0,
     schemeCount: 0,
     equipmentCount: 0,
-    cheatsheetCount: 0
+    cheatsheetCount: 0,
+    isDetailEdit: false
 };
 
 function loadState() {
@@ -421,18 +422,6 @@ function getCheatsheetsForReference(refId) {
     const ref = getReference(refId);
     if (!ref) return [];
     return state.cheatsheets.filter(c => ref.cheatSheetIds.includes(c.id));
-}
-
-function getSchemesByIds(ids) {
-    return state.schemes.filter(s => ids.includes(s.id));
-}
-
-function getEquipmentByIds(ids) {
-    return state.equipment.filter(e => ids.includes(e.id));
-}
-
-function getCheatsheetsByIds(ids) {
-    return state.cheatsheets.filter(c => ids.includes(c.id));
 }
 
 function exportAllDataJSON() {
