@@ -49,7 +49,7 @@ jobs:
           "webDir": "www",
           "bundledWebRuntime": false,
           "android": {
-            "icon": "icons/icon-192.png"
+            "icon": "assets/icons/icon-192.png"
           }
         }
         EOF
@@ -58,17 +58,7 @@ jobs:
     - name: Copy web assets
       run: |
         mkdir -p www
-        
-        # Копируем ВСЕ файлы из корня (как в PhytoNote копировались из assets)
-        cp index.html www/
-        cp manifest.json www/
-        cp sw.js www/
-        
-        # Копируем папки
-        cp -r css www/
-        cp -r js www/
-        cp -r icons www/
-        
+        cp -r assets/* www/
         echo "✅ All files copied to www!"
         echo "📁 Содержимое www:"
         ls -la www/
@@ -89,7 +79,7 @@ jobs:
         mkdir -p android/app/src/main/res/mipmap-xxhdpi
         mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        ICON_PATH="www/icons"
+        ICON_PATH="assets/icons"
         
         if [ -d "$ICON_PATH" ]; then
           echo "📂 Found icons in: $ICON_PATH"
@@ -111,6 +101,8 @@ jobs:
           echo "✅ Icons installed!"
         else
           echo "⚠️ Icon folder not found at $ICON_PATH"
+          echo "📂 Поиск иконок в других местах:"
+          find . -name "icon-*.png" 2>/dev/null
         fi
 
     - name: Build debug APK
