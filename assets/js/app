@@ -3,8 +3,23 @@
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📸 Фото-Шпаргалка инициализация...');
+    console.log('📸 PhotoNote инициализация...');
+    console.log('📱 Platform:', navigator.userAgent);
     
+    // Проверяем, запущено ли как PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.navigator.standalone || 
+                  document.referrer.includes('android-app://');
+    console.log('📱 PWA mode:', isPWA);
+    
+    // Принудительно применяем стили для PWA
+    if (isPWA) {
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', 'env(safe-area-inset-bottom, 0px)');
+        document.body.style.paddingBottom = 'calc(80px + env(safe-area-inset-bottom, 0px))';
+        document.getElementById('bottomNav').style.paddingBottom = 'calc(10px + env(safe-area-inset-bottom, 0px))';
+    }
+    
+    // Загружаем состояние
     loadState();
     console.log('📊 Данные загружены:', {
         references: state.references.length,
@@ -13,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
         cheatsheets: state.cheatsheets.length
     });
     
+    // Навигация по нижнему меню
     document.querySelectorAll('.bottom-nav .tab').forEach(tab => {
         tab.addEventListener('click', function() {
             const page = this.dataset.page;
@@ -21,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Закрытие модалок по клику на фон
     document.querySelectorAll('.modal-overlay').forEach(el => {
         el.addEventListener('click', function(e) {
             if (e.target === this) {
@@ -29,14 +46,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Поиск с дебаунсом
     const searchInput = document.getElementById('referencesSearch');
     if (searchInput) {
         searchInput.addEventListener('input', debounce(applyFilters, 300));
     }
     
+    // Открываем главную страницу
     navigateTo('references');
     
+    // Обновляем аватар
     setTimeout(updateAvatarDisplay, 100);
     
-    console.log('✅ Фото-Шпаргалка готова к работе!');
+    // Обновляем размер хранилища
+    setTimeout(updateStorageSize, 200);
+    
+    console.log('✅ PhotoNote готова к работе!');
+});
+
+// Обработка ошибок загрузки изображений
+document.addEventListener('error', function(e) {
+    if (e.target.tagName === 'IMG') {
+        console.warn('⚠️ Ошибка загрузки изображения:', e.target.src);
+        e.target.style.display = 'none';
+    }
+}, true);
+
+// Обработка системной кнопки "Назад" (Android)
+window.addEventListener('popstate', function() {
+    const slider = document.getElementById('sliderOverlay');
+    if (slider && slider.classList.contains('show')) {
+        closeSlider();
+    }
 });
