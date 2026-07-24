@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photo-cheatsheet-v1';
+const CACHE_NAME = 'phonote-v1';
 const ASSETS = [
   '/',
   '/index.html',
@@ -15,7 +15,11 @@ const ASSETS = [
   '/js/settings.js',
   '/manifest.json',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  '/icons/icon-144.png',
+  '/icons/icon-96.png',
+  '/icons/icon-72.png',
+  '/icons/icon-48.png'
 ];
 
 self.addEventListener('install', event => {
@@ -23,7 +27,9 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('📦 Кешируем файлы...');
-        return cache.addAll(ASSETS);
+        return cache.addAll(ASSETS).catch(err => {
+          console.warn('⚠️ Некоторые файлы не закешированы:', err);
+        });
       })
       .then(() => self.skipWaiting())
   );
@@ -41,6 +47,13 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Пропускаем запросы к API и аналитике
+  if (event.request.url.includes('google-analytics') || 
+      event.request.url.includes('analytics') ||
+      event.request.url.includes('api/')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(cached => {
@@ -49,18 +62,30 @@ self.addEventListener('fetch', event => {
         }
         return fetch(event.request)
           .then(response => {
+            // Не кешируем неправильные ответы
+            if (!response || response.status !== 200) {
+              return response;
+            }
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, clone);
+              try {
+                cache.put(event.request, clone);
+              } catch (e) {
+                console.warn('⚠️ Не удалось закешировать:', event.request.url);
+              }
             });
             return response;
+          })
+          .catch(() => {
+            // Если файл не найден в кеше и офлайн, возвращаем страницу
+            if (event.request.mode === 'navigate') {
+              return caches.match('/index.html');
+            }
+            return new Response('📸 PhotoNote офлайн', {
+              status: 200,
+              headers: { 'Content-Type': 'text/plain' }
+            });
           });
-      })
-      .catch(() => {
-        return new Response('📸 Фото-Шпаргалка офлайн', {
-          status: 200,
-          headers: { 'Content-Type': 'text/html' }
-        });
       })
   );
 });
