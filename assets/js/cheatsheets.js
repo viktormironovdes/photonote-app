@@ -5,12 +5,23 @@
 function renderCheatsheets() {
     const container = document.getElementById('cheatsheetsList');
     
-    if (state.cheatsheets.length === 0) {
+    const searchInput = document.getElementById('cheatsheetsSearch');
+    const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let filtered = state.cheatsheets;
+    if (searchQuery) {
+        filtered = state.cheatsheets.filter(c => {
+            return c.name.toLowerCase().includes(searchQuery);
+        });
+    }
+    
+    if (filtered.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <span class="icon-big">📋</span>
-                <p>Нет шпаргалок</p>
-                <p class="sub">Создайте памятки и таблицы</p>
+                <p>${state.cheatsheets.length === 0 ? 'Нет шпаргалок' : 'Ничего не найдено'}</p>
+                <p class="sub">${state.cheatsheets.length === 0 ? 'Создайте памятки и таблицы' : 'Попробуйте другой поиск'}</p>
+                <button class="btn" onclick="showAddCheatsheetModal()" style="margin-top:12px;max-width:280px;margin-left:auto;margin-right:auto;">➕ Добавить шпаргалку</button>
             </div>
         `;
         return;
@@ -22,7 +33,7 @@ function renderCheatsheets() {
         infographic: '🖼️'
     };
     
-    container.innerHTML = state.cheatsheets.map(cs => {
+    container.innerHTML = filtered.map(cs => {
         const count = state.references.filter(r => r.cheatSheetIds.includes(cs.id)).length;
         return `
             <div class="reference-card" onclick="showCheatsheetDetail('${cs.id}')">
@@ -50,6 +61,7 @@ function showAddCheatsheetModal() {
     document.getElementById('cheatsheetType').value = 'text';
     document.getElementById('cheatsheetText').value = '';
     document.getElementById('cheatsheetImagePreview').style.display = 'none';
+    document.getElementById('cheatsheetImagePreviewImg').src = '';
     document.getElementById('cheatsheetImage').value = '';
     
     document.getElementById('cheatsheetModal').classList.add('show');
@@ -129,11 +141,15 @@ function showCheatsheetDetail(cheatsheetId) {
     
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay show';
+    overlay.id = 'cheatsheetDetailModal';
     overlay.innerHTML = `
         <div class="modal-content">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0 20px;flex-shrink:0;">
                 <h2 style="margin:0;">${typeIcons[cs.type] || '📋'} ${cs.name}</h2>
-                <button class="edit-toggle" onclick="this.closest('.modal-overlay').classList.remove('show')" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;">✕</button>
+                <div>
+                    <button class="edit-toggle" onclick="editCheatsheetFromDetail('${cs.id}')" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px;">✏️</button>
+                    <button class="edit-toggle" onclick="this.closest('.modal-overlay').classList.remove('show')" style="background:transparent;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px;">✕</button>
+                </div>
             </div>
             <div class="modal-scroll" style="padding:0 20px 20px 20px;">
                 ${cs.image ? `<img src="${cs.image}" style="width:100%;max-height:300px;object-fit:contain;border-radius:12px;margin-bottom:12px;">` : ''}
@@ -151,7 +167,7 @@ function showCheatsheetDetail(cheatsheetId) {
                 ${refs.length > 0 ? `
                     <div style="margin-top:8px;font-size:13px;color:var(--text-secondary);">
                         <div style="font-weight:500;margin-bottom:4px;">Связанные референсы:</div>
-                        ${refs.map(r => `<div style="padding:4px 0;border-bottom:1px solid var(--border-color);cursor:pointer;" onclick="closeModalAndShowDetail('${r.id}')">📸 ${r.name}</div>`).join('')}
+                        ${refs.map(r => `<div style="padding:4px 0;border-bottom:1px solid var(--border-color);cursor:pointer;" onclick="closeCheatsheetModalAndShowDetail('${r.id}')">📸 ${r.name}</div>`).join('')}
                     </div>
                 ` : ''}
             </div>
@@ -167,6 +183,27 @@ function showCheatsheetDetail(cheatsheetId) {
     });
 }
 
+function editCheatsheetFromDetail(cheatsheetId) {
+    const cs = getCheatsheet(cheatsheetId);
+    if (!cs) return;
+    
+    const modal = document.getElementById('cheatsheetDetailModal');
+    if (modal) modal.classList.remove('show');
+    
+    document.getElementById('cheatsheetModalTitle').textContent = '✏️ Редактировать шпаргалку';
+    document.getElementById('editCheatsheetId').value = cs.id;
+    document.getElementById('cheatsheetName').value = cs.name;
+    document.getElementById('cheatsheetType').value = cs.type;
+    document.getElementById('cheatsheetText').value = cs.content || '';
+    document.getElementById('cheatsheetImagePreview').style.display = cs.image ? 'block' : 'none';
+    if (cs.image) {
+        document.getElementById('cheatsheetImagePreviewImg').src = cs.image;
+    }
+    document.getElementById('cheatsheetImage').value = '';
+    
+    document.getElementById('cheatsheetModal').classList.add('show');
+}
+
 function deleteCheatsheetFromModal(cheatsheetId) {
     if (!confirm('Удалить эту шпаргалку? Это также отвяжет её от всех референсов.')) return;
     deleteCheatsheet(cheatsheetId);
@@ -175,4 +212,10 @@ function deleteCheatsheetFromModal(cheatsheetId) {
     renderCheatsheets();
     renderReferences();
     showNotification('Шпаргалка удалена');
+}
+
+function closeCheatsheetModalAndShowDetail(refId) {
+    const modal = document.querySelector('.modal-overlay.show');
+    if (modal) modal.classList.remove('show');
+    openReferenceSlider(refId);
 }
