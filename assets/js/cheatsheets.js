@@ -33,6 +33,7 @@ function renderCheatsheets() {
         infographic: '🖼️'
     };
     
+    // Используем ТУ ЖЕ сетку, что и для референсов
     container.innerHTML = filtered.map(cs => {
         const count = state.references.filter(r => r.cheatSheetIds.includes(cs.id)).length;
         return `
