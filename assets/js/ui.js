@@ -78,3 +78,15 @@ function showNotification(message, type = 'success') {
     };
     alert(`${icons[type] || 'ℹ️'} ${message}`);
 }
+
+function toggleEditMode() {
+    state.isDetailEdit = !state.isDetailEdit;
+    if (sliderRefs.length > 0 && sliderCurrentIndex < sliderRefs.length) {
+        const ref = sliderRefs[sliderCurrentIndex];
+        if (!state.isDetailEdit) {
+            saveSliderEdit(ref.id);
+        } else {
+            renderSliderContent();
+        }
+    }
+}
