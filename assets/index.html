@@ -2,24 +2,43 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>PhotoNote</title>
     
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PhotoNote">
     <meta name="theme-color" content="#0d0d0d">
     <meta name="description" content="Личная база знаний фотографа">
+    <meta name="mobile-web-app-capable" content="yes">
     
     <link rel="stylesheet" href="css/style.css">
+    
+    <style>
+        /* Критические стили для предотвращения мерцания */
+        body {
+            background: #0d0d0d;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+        .slider-overlay {
+            display: none !important;
+        }
+        .slider-overlay.show {
+            display: flex !important;
+        }
+    </style>
 </head>
 <body>
 
     <!-- ================================================================
     ШАПКА
     ================================================================ -->
-    <header class="app-header">
+    <header class="app-header" id="appHeader">
         <h1 id="pageTitle">📸 Референсы</h1>
         <div class="header-actions">
             <button id="headerBackBtn" style="display:none;" onclick="closeSlider()">← Назад</button>
@@ -42,7 +61,7 @@
                 </div>
             </div>
             <div class="filter-actions">
-                <button class="btn btn-sm btn-outline" onclick="clearAllFilters()">✕ Очистить фильтры</button>
+                <button class="btn btn-sm btn-outline" onclick="clearAllFilters()">✕ Очистить</button>
                 <button class="btn btn-sm btn-success" onclick="showAddReferenceModal()" style="width:auto;">➕ Добавить</button>
                 <span id="filterCount" class="filter-count">0 референсов</span>
             </div>
@@ -300,7 +319,7 @@
     <!-- ================================================================
     НИЖНЕЕ МЕНЮ
     ================================================================ -->
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" id="bottomNav">
         <button class="tab active" data-page="references"><span class="icon">📸</span>Референсы</button>
         <button class="tab" data-page="schemes"><span class="icon">💡</span>Схемы</button>
         <button class="tab" data-page="equipment"><span class="icon">📷</span>Оборудование</button>
@@ -323,13 +342,18 @@
     <script src="js/app.js"></script>
 
     <!-- ================================================================
-    SERVICE WORKER
+    SERVICE WORKER (только если не в Capacitor)
     ================================================================ -->
     <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('✅ Service Worker зарегистрирован'))
-                .catch(err => console.log('❌ Ошибка регистрации SW:', err));
+        // Проверяем, что мы не в Capacitor (чтобы не конфликтовать)
+        if (!window.Capacitor) {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(() => console.log('✅ Service Worker зарегистрирован'))
+                    .catch(err => console.log('❌ Ошибка регистрации SW:', err));
+            }
+        } else {
+            console.log('⚡ Running in Capacitor, Service Worker disabled');
         }
     </script>
 
