@@ -47,21 +47,45 @@ jobs:
           "appId": "com.phonote.app",
           "appName": "PhotoNote",
           "webDir": "www",
-          "bundledWebRuntime": false,
-          "android": {
-            "icon": "assets/icons/icon-192.png"
-          }
+          "bundledWebRuntime": false
         }
         EOF
         echo "✅ capacitor.config.json created"
+
+    - name: 📂 Show repository structure
+      run: |
+        echo "📁 Структура репозитория:"
+        ls -la
+        echo ""
+        echo "📁 Структура assets:"
+        ls -la assets/
+        echo ""
+        echo "📁 Структура assets/css:"
+        ls -la assets/css/ || echo "  (пусто)"
+        echo ""
+        echo "📁 Структура assets/js:"
+        ls -la assets/js/ || echo "  (пусто)"
+        echo ""
+        echo "📁 Структура assets/icons:"
+        ls -la assets/icons/ || echo "  (пусто)"
 
     - name: Copy web assets
       run: |
         mkdir -p www
         cp -r assets/* www/
         echo "✅ All files copied to www!"
-        echo "📁 Содержимое www:"
+        echo ""
+        echo "📁 Содержимое www (ПОСЛЕ КОПИРОВАНИЯ):"
         ls -la www/
+        echo ""
+        echo "📁 Содержимое www/css:"
+        ls -la www/css/ || echo "  ❌ CSS папка ПУСТАЯ!"
+        echo ""
+        echo "📁 Содержимое www/js:"
+        ls -la www/js/ || echo "  ❌ JS папка ПУСТАЯ!"
+        echo ""
+        echo "📁 Содержимое www/icons:"
+        ls -la www/icons/ || echo "  ❌ ICONS папка ПУСТАЯ!"
 
     - name: Initialize Capacitor and add Android
       run: |
@@ -69,7 +93,7 @@ jobs:
         npx cap add android
         npx cap sync
 
-    - name: Setup app icons (copy to Android res)
+    - name: Setup app icons
       run: |
         echo "🎨 Setting up app icons..."
         
@@ -79,30 +103,21 @@ jobs:
         mkdir -p android/app/src/main/res/mipmap-xxhdpi
         mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        ICON_PATH="assets/icons"
+        ICON_PATH="www/icons"
         
         if [ -d "$ICON_PATH" ]; then
           echo "📂 Found icons in: $ICON_PATH"
+          ls -la $ICON_PATH
           
-          # Копируем иконки
           [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           
-          # round иконки
-          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-          
           echo "✅ Icons installed!"
         else
-          echo "⚠️ Icon folder not found at $ICON_PATH"
-          echo "📂 Поиск иконок в других местах:"
-          find . -name "icon-*.png" 2>/dev/null
+          echo "❌ ICON PATH NOT FOUND: $ICON_PATH"
         fi
 
     - name: Build debug APK
