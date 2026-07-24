@@ -43,20 +43,41 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Copy web assets BEFORE Capacitor init
+    - name: Copy web assets to www
       run: |
         mkdir -p www
-        # Копируем ВСЕ файлы из корня, как в PhytoNote копировались из assets
-        cp -r * www/ 2>/dev/null || true
-        # Удаляем ненужные папки из www (чтобы не засорять)
-        rm -rf www/node_modules www/.git www/.github 2>/dev/null || true
+        mkdir -p www/css
+        mkdir -p www/js
+        mkdir -p www/icons
+        
+        # Копируем HTML файлы
+        cp index.html www/
+        cp manifest.json www/
+        cp sw.js www/
+        
+        # Копируем CSS
+        cp css/*.css www/css/ 2>/dev/null || true
+        
+        # Копируем JS файлы
+        cp js/*.js www/js/ 2>/dev/null || true
+        
+        # Копируем иконки
+        cp icons/*.png www/icons/ 2>/dev/null || true
+        
         echo "✅ All files copied to www!"
+        echo "📁 Содержимое www:"
+        ls -la www/
+        echo ""
+        echo "📁 Содержимое www/js:"
+        ls -la www/js/ || echo "  (пусто)"
+        echo ""
+        echo "📁 Содержимое www/css:"
+        ls -la www/css/ || echo "  (пусто)"
 
     - name: Initialize Capacitor and add Android
       run: |
         npx cap init "PhotoNote" "com.phonote.app" --web-dir www
         npx cap add android
-        npx cap update
         npx cap sync
 
     - name: Setup app icons
