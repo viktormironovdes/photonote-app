@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Фото-Шпаргалка</title>
+    <title>PhotoNote</title>
     
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -22,7 +22,7 @@
     <header class="app-header">
         <h1 id="pageTitle">📸 Референсы</h1>
         <div class="header-actions">
-            <button id="headerBackBtn" style="display:none;" onclick="closeDetailPage()">← Назад</button>
+            <button id="headerBackBtn" style="display:none;" onclick="closeSlider()">← Назад</button>
             <button id="headerEditBtn" style="display:none;" onclick="toggleEditMode()">✏️</button>
         </div>
     </header>
@@ -52,18 +52,21 @@
 
     <!-- 2. СХЕМЫ СВЕТА -->
     <div class="page" id="page-schemes">
+        <input class="search-bar" id="schemesSearch" placeholder="🔍 Поиск по названию или тегам..." oninput="renderSchemes()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddSchemeModal()" style="margin-bottom:12px;">➕ Добавить схему</button>
         <div id="schemesList"></div>
     </div>
 
     <!-- 3. ОБОРУДОВАНИЕ -->
     <div class="page" id="page-equipment">
+        <input class="search-bar" id="equipmentSearch" placeholder="🔍 Поиск по названию или характеристикам..." oninput="renderEquipment()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddEquipmentModal()" style="margin-bottom:12px;">➕ Добавить оборудование</button>
         <div id="equipmentList"></div>
     </div>
 
     <!-- 4. ШПАРГАЛКИ -->
     <div class="page" id="page-cheatsheets">
+        <input class="search-bar" id="cheatsheetsSearch" placeholder="🔍 Поиск по названию..." oninput="renderCheatsheets()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddCheatsheetModal()" style="margin-bottom:12px;">➕ Добавить шпаргалку</button>
         <div id="cheatsheetsList"></div>
     </div>
