@@ -43,11 +43,30 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Copy web assets
+    - name: Create www folder and copy ALL files
       run: |
         mkdir -p www
-        cp -r assets/* www/
+        mkdir -p www/css
+        mkdir -p www/js
+        mkdir -p www/icons
+        
+        # Копируем все HTML файлы
+        cp index.html www/
+        cp manifest.json www/
+        cp sw.js www/
+        
+        # Копируем CSS
+        cp css/style.css www/css/
+        
+        # Копируем все JS файлы
+        cp js/*.js www/js/
+        
+        # Копируем иконки
+        cp icons/*.png www/icons/ 2>/dev/null || true
+        
         echo "✅ All files copied to www!"
+        ls -la www/
+        ls -la www/js/
 
     - name: Initialize Capacitor and add Android
       run: |
@@ -66,26 +85,23 @@ jobs:
         mkdir -p android/app/src/main/res/mipmap-xxhdpi
         mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        ICON_PATH="assets/icon"
-        
-        if [ -d "$ICON_PATH" ]; then
-          echo "📂 Found icons in: $ICON_PATH"
-          
-          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          
-          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-          
-          echo "✅ Icons installed!"
+        # Проверяем наличие иконок в разных возможных местах
+        if [ -f "www/icons/icon-192.png" ]; then
+          echo "✅ Found icons in www/icons/"
+          cp www/icons/icon-48.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
+          cp www/icons/icon-72.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
+          cp www/icons/icon-96.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
+          cp www/icons/icon-144.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
+          cp www/icons/icon-192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
+        elif [ -f "icons/icon-192.png" ]; then
+          echo "✅ Found icons in icons/"
+          cp icons/icon-48.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png 2>/dev/null || true
+          cp icons/icon-72.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png 2>/dev/null || true
+          cp icons/icon-96.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png 2>/dev/null || true
+          cp icons/icon-144.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png 2>/dev/null || true
+          cp icons/icon-192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png 2>/dev/null || true
         else
-          echo "⚠️ Icon folder not found, using default Capacitor icons"
+          echo "⚠️ Icons not found, using Capacitor defaults"
         fi
 
     - name: Build debug APK
