@@ -28,6 +28,7 @@ function renderSchemes() {
         return;
     }
     
+    // Используем ТУ ЖЕ сетку, что и для референсов
     container.innerHTML = filtered.map(scheme => {
         const count = getReferenceCountForScheme(scheme.id);
         return `
