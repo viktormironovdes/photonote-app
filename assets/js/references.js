@@ -22,26 +22,59 @@ function renderReferences(references = null) {
         return;
     }
     
-    container.innerHTML = list.map(ref => `
-        <div class="reference-card" onclick="openReferenceSlider('${ref.id}')">
-            <div class="image-wrapper">
-                ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" loading="lazy">` : `<div class="no-photo">📸</div>`}
-                ${ref.isFavorite ? '<span class="favorite-badge">❤️</span>' : ''}
-            </div>
-            <div class="info">
-                <div class="title">${ref.name}</div>
-                <div class="tags">
-                    ${(ref.tags || []).slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    ${(ref.tags || []).length > 3 ? `<span class="tag">+${(ref.tags || []).length - 3}</span>` : ''}
+    container.innerHTML = list.map(ref => {
+        // Иконки для дополнительных характеристик
+        const typeIcons = {
+            single: '👤',
+            pair: '👥',
+            group: '👥'
+        };
+        const colorIcons = {
+            color: '🌈',
+            bw: '⚫'
+        };
+        const framingIcons = {
+            head: '👤',
+            bust: '👤',
+            waist: '👤',
+            knee: '👤',
+            full: '👤'
+        };
+        const poseIcons = {
+            standing: '🧍',
+            sitting: '🪑',
+            lying: '🛌',
+            moving: '🏃',
+            mixed: '🔄'
+        };
+        
+        return `
+            <div class="reference-card" onclick="openReferenceSlider('${ref.id}')">
+                <div class="image-wrapper">
+                    ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" loading="lazy">` : `<div class="no-photo">📸</div>`}
+                    ${ref.isFavorite ? '<span class="favorite-badge">❤️</span>' : ''}
                 </div>
-                <div class="meta">
-                    <span>💡 ${ref.schemeIds?.length || 0}</span>
-                    <span>📷 ${ref.equipmentIds?.length || 0}</span>
-                    <span>📋 ${ref.cheatSheetIds?.length || 0}</span>
+                <div class="info">
+                    <div class="title">${ref.name}</div>
+                    <div class="tags">
+                        ${(ref.tags || []).slice(0, 2).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        ${(ref.tags || []).length > 2 ? `<span class="tag">+${(ref.tags || []).length - 2}</span>` : ''}
+                    </div>
+                    <div class="meta">
+                        <span>${typeIcons[ref.portraitType] || '👤'} ${ref.portraitType || 'single'}</span>
+                        <span>${colorIcons[ref.colorType] || '🌈'} ${ref.colorType || 'color'}</span>
+                        <span>${framingIcons[ref.framing] || '📐'} ${ref.framing || 'bust'}</span>
+                        <span>${poseIcons[ref.pose] || '🧍'} ${ref.pose || 'standing'}</span>
+                    </div>
+                    <div class="meta">
+                        <span>💡 ${ref.schemeIds?.length || 0}</span>
+                        <span>📷 ${ref.equipmentIds?.length || 0}</span>
+                        <span>📋 ${ref.cheatSheetIds?.length || 0}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function openReferenceSlider(referenceId) {
@@ -105,6 +138,31 @@ function renderSliderMenu(ref) {
     const equipment = getEquipmentForReference(ref.id);
     const cheatsheets = getCheatsheetsForReference(ref.id);
     
+    // Иконки для характеристик
+    const typeIcons = {
+        single: '👤',
+        pair: '👥',
+        group: '👥'
+    };
+    const colorIcons = {
+        color: '🌈',
+        bw: '⚫'
+    };
+    const framingIcons = {
+        head: '👤 Голова',
+        bust: '👤 Погрудный',
+        waist: '👤 Поясной',
+        knee: '👤 Поколенный',
+        full: '👤 В полный рост'
+    };
+    const poseIcons = {
+        standing: '🧍 Стоя',
+        sitting: '🪑 Сидя',
+        lying: '🛌 Лёжа',
+        moving: '🏃 В движении',
+        mixed: '🔄 Смешанная'
+    };
+    
     let html = `
         <div class="slider-menu-header">
             <div class="slider-menu-title">
@@ -116,6 +174,64 @@ function renderSliderMenu(ref) {
             <button class="slider-menu-close-btn" onclick="event.stopPropagation(); closeSlider()">✕</button>
         </div>
         <div class="slider-menu-body">
+    `;
+    
+    // Характеристики портрета
+    html += `
+        <div class="slider-field">
+            <span class="slider-label">👤 Тип портрета</span>
+            ${isEdit ? `
+                <select id="sliderPortraitType" style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="single" ${ref.portraitType === 'single' ? 'selected' : ''}>👤 Одиночный</option>
+                    <option value="pair" ${ref.portraitType === 'pair' ? 'selected' : ''}>👥 Парный</option>
+                    <option value="group" ${ref.portraitType === 'group' ? 'selected' : ''}>👥 Групповой</option>
+                </select>
+            ` : `
+                <span class="slider-value">${typeIcons[ref.portraitType] || '👤'} ${ref.portraitType || 'одиночный'}</span>
+            `}
+        </div>
+        
+        <div class="slider-field">
+            <span class="slider-label">🎨 Цветность</span>
+            ${isEdit ? `
+                <select id="sliderColorType" style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="color" ${ref.colorType === 'color' ? 'selected' : ''}>🌈 Цветной</option>
+                    <option value="bw" ${ref.colorType === 'bw' ? 'selected' : ''}>⚫ Чёрно-белый</option>
+                </select>
+            ` : `
+                <span class="slider-value">${colorIcons[ref.colorType] || '🌈'} ${ref.colorType || 'цветной'}</span>
+            `}
+        </div>
+        
+        <div class="slider-field">
+            <span class="slider-label">📐 Кадрирование</span>
+            ${isEdit ? `
+                <select id="sliderFraming" style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="head" ${ref.framing === 'head' ? 'selected' : ''}>👤 Голова</option>
+                    <option value="bust" ${ref.framing === 'bust' ? 'selected' : ''}>👤 Погрудный</option>
+                    <option value="waist" ${ref.framing === 'waist' ? 'selected' : ''}>👤 Поясной</option>
+                    <option value="knee" ${ref.framing === 'knee' ? 'selected' : ''}>👤 Поколенный</option>
+                    <option value="full" ${ref.framing === 'full' ? 'selected' : ''}>👤 В полный рост</option>
+                </select>
+            ` : `
+                <span class="slider-value">${framingIcons[ref.framing] || '📐 ' + ref.framing}</span>
+            `}
+        </div>
+        
+        <div class="slider-field">
+            <span class="slider-label">🧘 Поза модели</span>
+            ${isEdit ? `
+                <select id="sliderPose" style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="standing" ${ref.pose === 'standing' ? 'selected' : ''}>🧍 Стоя</option>
+                    <option value="sitting" ${ref.pose === 'sitting' ? 'selected' : ''}>🪑 Сидя</option>
+                    <option value="lying" ${ref.pose === 'lying' ? 'selected' : ''}>🛌 Лёжа</option>
+                    <option value="moving" ${ref.pose === 'moving' ? 'selected' : ''}>🏃 В движении</option>
+                    <option value="mixed" ${ref.pose === 'mixed' ? 'selected' : ''}>🔄 Смешанная</option>
+                </select>
+            ` : `
+                <span class="slider-value">${poseIcons[ref.pose] || '🧍 ' + ref.pose}</span>
+            `}
+        </div>
     `;
     
     if (isEdit) {
@@ -216,7 +332,7 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
-    // ПОДГРУЗКА СХЕМ (полноценные картинки)
+    // ПОДГРУЗКА СХЕМ
     if (schemes.length > 0 && !isEdit) {
         html += `
             <div style="margin-top:12px;border-top:1px solid var(--border-color);padding-top:12px;">
@@ -458,6 +574,10 @@ function saveSliderEdit(refId) {
     if (!ref) return;
     
     const description = document.getElementById('sliderDescription')?.value?.trim() || '';
+    const portraitType = document.getElementById('sliderPortraitType')?.value || ref.portraitType;
+    const colorType = document.getElementById('sliderColorType')?.value || ref.colorType;
+    const framing = document.getElementById('sliderFraming')?.value || ref.framing;
+    const pose = document.getElementById('sliderPose')?.value || ref.pose;
     
     const tagContainer = document.getElementById('sliderSelectedTags');
     const tags = [];
@@ -470,7 +590,11 @@ function saveSliderEdit(refId) {
     
     updateReference(refId, {
         description: description,
-        tags: tags
+        tags: tags,
+        portraitType: portraitType,
+        colorType: colorType,
+        framing: framing,
+        pose: pose
     });
     
     state.isDetailEdit = false;
@@ -641,6 +765,12 @@ function showAddReferenceModal() {
     document.getElementById('refFavorite').checked = false;
     document.getElementById('refImageCompressed').value = '';
     
+    // Сбрасываем новые поля
+    document.getElementById('refPortraitType').value = 'single';
+    document.getElementById('refColorType').value = 'color';
+    document.getElementById('refFraming').value = 'bust';
+    document.getElementById('refPose').value = 'standing';
+    
     renderRefCheckboxes();
     document.getElementById('referenceModal').classList.add('show');
 }
@@ -719,6 +849,12 @@ function saveReference() {
     const compressedImage = document.getElementById('refImageCompressed')?.value || null;
     const tags = getRefTagsFromModal();
     
+    // НОВЫЕ ПОЛЯ
+    const portraitType = document.getElementById('refPortraitType').value;
+    const colorType = document.getElementById('refColorType').value;
+    const framing = document.getElementById('refFraming').value;
+    const pose = document.getElementById('refPose').value;
+    
     const schemeIds = [];
     document.querySelectorAll('#refSchemeCheckboxes input:checked').forEach(cb => {
         schemeIds.push(cb.value);
@@ -743,29 +879,31 @@ function saveReference() {
     
     if (compressedImage) {
         image = compressedImage;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
     } else if (imageInput.files && imageInput.files[0]) {
         compressImage(imageInput.files[0], 1200, 1200, function(compressedBase64) {
-            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite);
+            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
         });
     } else if (editId) {
         const existing = getReference(editId);
         image = existing ? existing.image : null;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
     } else {
-        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite);
+        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
     }
 }
 
-function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite) {
+function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose) {
     if (editId) {
         updateReference(editId, {
-            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite
+            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite,
+            portraitType, colorType, framing, pose
         });
         showNotification('Референс обновлён!');
     } else {
         addReference({
-            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite
+            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite,
+            portraitType, colorType, framing, pose
         });
         showNotification('Референс добавлен!');
     }
