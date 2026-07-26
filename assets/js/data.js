@@ -20,7 +20,14 @@ let state = {
     schemeCount: 0,
     equipmentCount: 0,
     cheatsheetCount: 0,
-    isDetailEdit: false
+    isDetailEdit: false,
+    // НОВЫЕ ФИЛЬТРЫ ДЛЯ ПОРТРЕТОВ
+    filters: {
+        portraitType: 'all',      // 'single', 'pair', 'group', 'all'
+        colorType: 'all',         // 'bw', 'color', 'all'
+        framing: 'all',           // 'head', 'bust', 'waist', 'knee', 'full', 'all'
+        pose: 'all'               // 'standing', 'sitting', 'lying', 'moving', 'mixed', 'all'
+    }
 };
 
 function loadState() {
@@ -38,6 +45,7 @@ function loadState() {
                 avatar: null
             };
             
+            // Миграция: добавляем новые поля к старым референсам
             state.references.forEach(r => {
                 if (!r.createdAt) r.createdAt = new Date().toISOString();
                 if (!r.tags) r.tags = [];
@@ -45,20 +53,17 @@ function loadState() {
                 if (!r.equipmentIds) r.equipmentIds = [];
                 if (!r.cheatSheetIds) r.cheatSheetIds = [];
                 if (r.isFavorite === undefined) r.isFavorite = false;
+                // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+                if (!r.portraitType) r.portraitType = 'single';
+                if (!r.colorType) r.colorType = 'color';
+                if (!r.framing) r.framing = 'bust';
+                if (!r.pose) r.pose = 'standing';
             });
             
-            state.schemes.forEach(s => {
-                if (!s.createdAt) s.createdAt = new Date().toISOString();
-                if (!s.tags) s.tags = [];
-            });
-            
-            state.equipment.forEach(e => {
-                if (!e.createdAt) e.createdAt = new Date().toISOString();
-            });
-            
-            state.cheatsheets.forEach(c => {
-                if (!c.createdAt) c.createdAt = new Date().toISOString();
-            });
+            // Загружаем фильтры если есть
+            if (data.filters) {
+                state.filters = data.filters;
+            }
             
             console.log('📊 Данные загружены:', {
                 references: state.references.length,
@@ -83,7 +88,8 @@ function saveState() {
         schemes: state.schemes,
         equipment: state.equipment,
         cheatsheets: state.cheatsheets,
-        user: state.user
+        user: state.user,
+        filters: state.filters
     };
     localStorage.setItem('photoCheatsheetState', JSON.stringify(data));
     updateCounts();
@@ -200,7 +206,11 @@ function initDemoData() {
             equipmentIds: ['eq_1', 'eq_2', 'eq_3'],
             cheatSheetIds: [],
             isFavorite: true,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            portraitType: 'single',
+            colorType: 'color',
+            framing: 'bust',
+            pose: 'standing'
         },
         {
             id: 'ref_2',
@@ -212,7 +222,11 @@ function initDemoData() {
             equipmentIds: ['eq_3'],
             cheatSheetIds: [],
             isFavorite: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            portraitType: 'single',
+            colorType: 'color',
+            framing: 'full',
+            pose: 'standing'
         },
         {
             id: 'ref_3',
@@ -224,7 +238,11 @@ function initDemoData() {
             equipmentIds: ['eq_1', 'eq_2'],
             cheatSheetIds: ['cs_1'],
             isFavorite: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            portraitType: 'single',
+            colorType: 'bw',
+            framing: 'waist',
+            pose: 'sitting'
         }
     ];
     
@@ -246,7 +264,12 @@ function addReference(data) {
         equipmentIds: data.equipmentIds || [],
         cheatSheetIds: data.cheatSheetIds || [],
         isFavorite: data.isFavorite || false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+        portraitType: data.portraitType || 'single',
+        colorType: data.colorType || 'color',
+        framing: data.framing || 'bust',
+        pose: data.pose || 'standing'
     };
     state.references.push(ref);
     saveState();
@@ -265,6 +288,11 @@ function updateReference(id, data) {
     if (data.equipmentIds !== undefined) ref.equipmentIds = data.equipmentIds;
     if (data.cheatSheetIds !== undefined) ref.cheatSheetIds = data.cheatSheetIds;
     if (data.isFavorite !== undefined) ref.isFavorite = data.isFavorite;
+    // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+    if (data.portraitType !== undefined) ref.portraitType = data.portraitType;
+    if (data.colorType !== undefined) ref.colorType = data.colorType;
+    if (data.framing !== undefined) ref.framing = data.framing;
+    if (data.pose !== undefined) ref.pose = data.pose;
     
     saveState();
     return ref;
@@ -424,6 +452,18 @@ function getCheatsheetsForReference(refId) {
     return state.cheatsheets.filter(c => ref.cheatSheetIds.includes(c.id));
 }
 
+function getSchemesByIds(ids) {
+    return state.schemes.filter(s => ids.includes(s.id));
+}
+
+function getEquipmentByIds(ids) {
+    return state.equipment.filter(e => ids.includes(e.id));
+}
+
+function getCheatsheetsByIds(ids) {
+    return state.cheatsheets.filter(c => ids.includes(c.id));
+}
+
 function exportAllDataJSON() {
     return JSON.stringify({
         version: '1.0',
@@ -452,6 +492,14 @@ function importAllData(jsonData) {
             email: '',
             avatar: null
         };
+        
+        // Миграция для импортированных данных
+        state.references.forEach(r => {
+            if (!r.portraitType) r.portraitType = 'single';
+            if (!r.colorType) r.colorType = 'color';
+            if (!r.framing) r.framing = 'bust';
+            if (!r.pose) r.pose = 'standing';
+        });
         
         saveState();
         return true;
