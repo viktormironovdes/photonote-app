@@ -1,77 +1,35 @@
 // ================================================================
-// ПРОФИЛЬ И НАСТРОЙКИ
+// ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ + ПОДЕЛИТЬСЯ
 // ================================================================
 
-let Share = null;
-let isNative = false;
-
-// Проверяем наличие Capacitor
-if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-    isNative = true;
-    console.log('📱 Запущено на нативной платформе (Android)');
-    
-    // Получаем Share плагин
-    if (window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
-        Share = window.Capacitor.Plugins.Share;
-        console.log('✅ Capacitor Share загружен');
-    } else {
-        console.warn('⚠️ Capacitor Share не найден');
-    }
-} else {
-    console.log('💻 Запущено в браузере (Web)');
-}
-
-function saveProfile() {
+function loadProfile() {
     const nameInput = document.getElementById('profileNameInput');
     const emailInput = document.getElementById('profileEmailInput');
     
-    if (!nameInput || !emailInput) {
-        console.error('❌ Profile inputs not found');
-        return;
-    }
+    if (nameInput) nameInput.value = state.user.name || 'Фотограф';
+    if (emailInput) emailInput.value = state.user.email || '';
     
-    const newName = nameInput.value.trim() || 'Вы';
-    const newEmail = emailInput.value.trim();
-    
-    console.log('💾 Saving profile:', { name: newName, email: newEmail });
-    
-    state.user.name = newName;
-    state.user.email = newEmail;
-    
-    state.user.notifications = {
-        push: document.getElementById('notifPush')?.checked ?? true,
-        email: document.getElementById('notifEmail')?.checked ?? false,
-    };
-    
-    saveState();
     updateAvatarDisplay();
-    alert('✅ Профиль сохранён!');
+    updateCounts();
+    updateStorageSize();
 }
 
-function loadProfile() {
-    console.log('📂 Loading profile...');
+function saveProfile() {
+    const name = document.getElementById('profileNameInput').value.trim() || 'Фотограф';
+    const email = document.getElementById('profileEmailInput').value.trim();
     
-    if (!state.user.name || state.user.name.trim() === '') {
-        state.user.name = 'Вы';
-        saveState();
-    }
-    
-    document.getElementById('profileNameInput').value = state.user.name || 'Вы';
-    document.getElementById('profileEmailInput').value = state.user.email || '';
-    document.getElementById('notifPush').checked = state.user.notifications?.push ?? true;
-    document.getElementById('notifEmail').checked = state.user.notifications?.email ?? false;
-    
+    state.user.name = name;
+    state.user.email = email;
+    saveState();
     updateAvatarDisplay();
+    showNotification('Профиль сохранён!');
 }
 
 function updateAvatarDisplay() {
     const letterEl = document.getElementById('avatarLetter');
     const imgEl = document.getElementById('avatarImage');
     
-    if (!letterEl || !imgEl) {
-        console.error('❌ Элементы аватарки не найдены');
-        return;
-    }
+    if (!letterEl || !imgEl) return;
     
     if (state.user.avatar) {
         letterEl.style.display = 'none';
@@ -80,7 +38,7 @@ function updateAvatarDisplay() {
     } else {
         letterEl.style.display = 'block';
         imgEl.style.display = 'none';
-        const name = state.user.name || 'Вы';
+        const name = state.user.name || 'Фотограф';
         letterEl.textContent = name.charAt(0).toUpperCase();
     }
 }
@@ -88,6 +46,7 @@ function updateAvatarDisplay() {
 function handleAvatarUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
@@ -102,7 +61,7 @@ function handleAvatarUpload(event) {
             state.user.avatar = dataUrl;
             saveState();
             updateAvatarDisplay();
-            alert('✅ Аватар обновлён!');
+            showNotification('Аватар обновлён!');
         };
         img.src = e.target.result;
     };
@@ -110,296 +69,518 @@ function handleAvatarUpload(event) {
     event.target.value = '';
 }
 
-function showDisplaySettingsModal() {
-    const settings = state.user.display_settings || {};
-    document.getElementById('settingsPlacement').checked = settings.show_placement !== undefined ? settings.show_placement : true;
-    document.getElementById('settingsCondition').checked = settings.show_condition !== undefined ? settings.show_condition : true;
-    document.getElementById('settingsLight').checked = settings.show_light !== undefined ? settings.show_light : true;
-    document.getElementById('settingsWatering').checked = settings.show_watering !== undefined ? settings.show_watering : true;
-    document.getElementById('settingsFertilizing').checked = settings.show_fertilizing !== undefined ? settings.show_fertilizing : true;
-    document.getElementById('settingsLatinName').checked = settings.show_latin_name || false;
-    document.getElementById('settingsPlantingDate').checked = settings.show_planting_date || false;
-    document.getElementById('settingsFertilizingPeriod').checked = settings.show_fertilizing_period || false;
-    document.getElementById('settingsLastRepotting').checked = settings.show_last_repotting || false;
-    document.getElementById('settingsNotes').checked = settings.show_notes || false;
-    document.getElementById('settingsCareInfo').checked = settings.show_care_info || false;
-    document.getElementById('displaySettingsModal').classList.add('show');
-}
+// ================================================================
+// ЭКСПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ (для ПК и разработки)
+// ================================================================
 
-function closeDisplaySettingsModal() {
-    document.getElementById('displaySettingsModal').classList.remove('show');
-}
-
-function saveDisplaySettings() {
-    state.user.display_settings = {
-        show_placement: document.getElementById('settingsPlacement').checked,
-        show_condition: document.getElementById('settingsCondition').checked,
-        show_light: document.getElementById('settingsLight').checked,
-        show_watering: document.getElementById('settingsWatering').checked,
-        show_fertilizing: document.getElementById('settingsFertilizing').checked,
-        show_latin_name: document.getElementById('settingsLatinName').checked,
-        show_planting_date: document.getElementById('settingsPlantingDate').checked,
-        show_fertilizing_period: document.getElementById('settingsFertilizingPeriod').checked,
-        show_last_repotting: document.getElementById('settingsLastRepotting').checked,
-        show_notes: document.getElementById('settingsNotes').checked,
-        show_care_info: document.getElementById('settingsCareInfo').checked,
+function exportReferences() {
+    if (state.references.length === 0) {
+        showNotification('Нет референсов для экспорта', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'references',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.references.length,
+        data: state.references
     };
-    saveState();
-    if (state.detailFlowerId) {
-        renderDetailPage(state.detailFlowerId);
+    
+    downloadJSON(data, `references_${getTodayStr()}.json`);
+    showNotification(`Экспортировано ${state.references.length} референсов!`);
+}
+
+function exportSchemes() {
+    if (state.schemes.length === 0) {
+        showNotification('Нет схем для экспорта', 'warning');
+        return;
     }
+    
+    const data = {
+        type: 'schemes',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.schemes.length,
+        data: state.schemes
+    };
+    
+    downloadJSON(data, `schemes_${getTodayStr()}.json`);
+    showNotification(`Экспортировано ${state.schemes.length} схем!`);
 }
 
-// ================================================================
-// ЭКСПОРТ КОЛЛЕКЦИЙ (ЧЕРЕЗ SHARE)
-// ================================================================
-
-function showExportBaseModal() {
-    if (state.bases.length === 0) { 
-        alert('❌ Нет коллекций для экспорта'); 
-        return; 
+function exportEquipment() {
+    if (state.equipment.length === 0) {
+        showNotification('Нет оборудования для экспорта', 'warning');
+        return;
     }
-    const select = document.getElementById('exportBaseSelect');
-    select.innerHTML = state.bases.map(b => `<option value="${b.id}">${b.icon} ${getBaseDisplayName(b)}</option>`).join('');
-    document.getElementById('exportBaseModal').classList.add('show');
+    
+    const data = {
+        type: 'equipment',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.equipment.length,
+        data: state.equipment
+    };
+    
+    downloadJSON(data, `equipment_${getTodayStr()}.json`);
+    showNotification(`Экспортировано ${state.equipment.length} единиц оборудования!`);
 }
 
-function closeExportBaseModal() {
-    document.getElementById('exportBaseModal').classList.remove('show');
+function exportCheatsheets() {
+    if (state.cheatsheets.length === 0) {
+        showNotification('Нет шпаргалок для экспорта', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'cheatsheets',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.cheatsheets.length,
+        data: state.cheatsheets
+    };
+    
+    downloadJSON(data, `cheatsheets_${getTodayStr()}.json`);
+    showNotification(`Экспортировано ${state.cheatsheets.length} шпаргалок!`);
 }
 
-async function executeExportBase() {
-    const baseId = document.getElementById('exportBaseSelect').value;
-    const base = getBase(baseId);
-    if (!base) return;
-    const flowers = getFlowersByBase(baseId);
-    const data = { base, flowers, exportedAt: new Date().toISOString() };
+function downloadJSON(data, filename) {
     const jsonString = JSON.stringify(data, null, 2);
-    const fileName = `collection_${base.name}_${new Date().toISOString().split('T')[0]}.json`;
-
-    console.log('📤 Экспорт коллекции через Share:', { baseId, fileName, isNative });
-
-    try {
-        if (isNative && Share) {
-            console.log('📱 Используем Capacitor Share для экспорта на Android');
-            
-            await Share.share({
-                title: `Коллекция: ${base.name}`,
-                text: `📋 Коллекция "${base.name}"\n🌱 Растений: ${flowers.length}\n📅 Экспортировано: ${new Date().toLocaleDateString('ru-RU')}\n\nДанные прилагаются в виде файла.`,
-                files: [{
-                    data: jsonString,
-                    mimeType: 'application/json',
-                    fileName: fileName
-                }]
-            });
-            
-            console.log('✅ Окно "Поделиться" открыто');
-            alert('✅ Открыто окно "Поделиться"! Выберите куда сохранить или отправить файл.');
-            closeExportBaseModal();
-            
-        } else {
-            console.log('💻 Используем браузерное скачивание');
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            alert(`✅ Коллекция экспортирована!\n📁 Папка: Загрузки (Downloads)\n📄 Файл: ${fileName}`);
-            closeExportBaseModal();
-        }
-    } catch (error) {
-        console.error('❌ Критическая ошибка экспорта:', error);
-        
-        try {
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            alert(`✅ Коллекция экспортирована!\n📁 Папка: Загрузки (Downloads)\n📄 Файл: ${fileName}`);
-            closeExportBaseModal();
-        } catch (fallbackError) {
-            alert(`❌ Ошибка при экспорте: ${error.message}`);
-        }
-    }
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function importBase(event) {
+// ================================================================
+// ИМПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ
+// ================================================================
+
+function importReferences(event) {
     const file = event.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            if (!data.base || !data.flowers) { alert('Неверный формат'); return; }
-            if (state.bases.some(b => b.name === data.base.name && b.owner === 'Вы')) {
-                if (!confirm(`Коллекция "${data.base.name}" уже существует. Создать копию?`)) return;
-                data.base.name = data.base.name + ' (копия)';
+            
+            if (data.type !== 'references' || !data.data) {
+                throw new Error('Неверный формат файла референсов');
             }
-            const newBaseId = 'base_' + generateUUID();
-            data.base.id = newBaseId;
-            data.base.owner = 'Вы';
-            state.bases.push(data.base);
-            data.flowers.forEach(f => {
-                const newId = 'flower_' + generateUUID();
-                f.id = newId;
-                f.base_id = newBaseId;
-                if (!f.latin_name) f.latin_name = '';
-                if (!f.planting_date) f.planting_date = new Date().toISOString().slice(0, 7);
-                if (!f.fertilizing_start) f.fertilizing_start = 3;
-                if (!f.fertilizing_end) f.fertilizing_end = 10;
-                if (!f.catalog_name) f.catalog_name = f.name;
-                if (!f.catalog_icon) f.catalog_icon = '🌿';
-                if (!f.catalog_description) f.catalog_description = '';
-                if (!f.history) f.history = [];
-                state.flowers.push(f);
-            });
+            
+            const count = data.data.length;
+            const action = confirm(`Найдено ${count} референсов.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
+            
+            if (action) {
+                let added = 0;
+                data.data.forEach(newRef => {
+                    const exists = state.references.some(r => r.id === newRef.id);
+                    if (!exists) {
+                        state.references.push(newRef);
+                        added++;
+                    }
+                });
+                showNotification(`Добавлено ${added} новых референсов (${count - added} пропущено как дубликаты)`);
+            } else {
+                state.references = data.data;
+                showNotification(`Заменено ${count} референсов`);
+            }
+            
             saveState();
-            renderAll();
-            renderCare();
-            renderCalendar();
-            alert('✅ Коллекция импортирована');
-        } catch (err) { alert('Ошибка: ' + err.message); }
+            applyFilters();
+            renderReferences();
+            updateCounts();
+            
+        } catch (err) {
+            showNotification('Ошибка импорта: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function importSchemes(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.type !== 'schemes' || !data.data) {
+                throw new Error('Неверный формат файла схем');
+            }
+            
+            const count = data.data.length;
+            const action = confirm(`Найдено ${count} схем.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
+            
+            if (action) {
+                let added = 0;
+                data.data.forEach(newScheme => {
+                    const exists = state.schemes.some(s => s.id === newScheme.id);
+                    if (!exists) {
+                        state.schemes.push(newScheme);
+                        added++;
+                    }
+                });
+                showNotification(`Добавлено ${added} новых схем (${count - added} пропущено как дубликаты)`);
+            } else {
+                state.schemes = data.data;
+                showNotification(`Заменено ${count} схем`);
+            }
+            
+            saveState();
+            renderSchemes();
+            renderReferences();
+            updateCounts();
+            
+        } catch (err) {
+            showNotification('Ошибка импорта: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function importEquipment(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.type !== 'equipment' || !data.data) {
+                throw new Error('Неверный формат файла оборудования');
+            }
+            
+            const count = data.data.length;
+            const action = confirm(`Найдено ${count} единиц оборудования.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
+            
+            if (action) {
+                let added = 0;
+                data.data.forEach(newEq => {
+                    const exists = state.equipment.some(e => e.id === newEq.id);
+                    if (!exists) {
+                        state.equipment.push(newEq);
+                        added++;
+                    }
+                });
+                showNotification(`Добавлено ${added} новых единиц (${count - added} пропущено как дубликаты)`);
+            } else {
+                state.equipment = data.data;
+                showNotification(`Заменено ${count} единиц оборудования`);
+            }
+            
+            saveState();
+            renderEquipment();
+            renderReferences();
+            updateCounts();
+            
+        } catch (err) {
+            showNotification('Ошибка импорта: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function importCheatsheets(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            if (data.type !== 'cheatsheets' || !data.data) {
+                throw new Error('Неверный формат файла шпаргалок');
+            }
+            
+            const count = data.data.length;
+            const action = confirm(`Найдено ${count} шпаргалок.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
+            
+            if (action) {
+                let added = 0;
+                data.data.forEach(newCs => {
+                    const exists = state.cheatsheets.some(c => c.id === newCs.id);
+                    if (!exists) {
+                        state.cheatsheets.push(newCs);
+                        added++;
+                    }
+                });
+                showNotification(`Добавлено ${added} новых шпаргалок (${count - added} пропущено как дубликаты)`);
+            } else {
+                state.cheatsheets = data.data;
+                showNotification(`Заменено ${count} шпаргалок`);
+            }
+            
+            saveState();
+            renderCheatsheets();
+            renderReferences();
+            updateCounts();
+            
+        } catch (err) {
+            showNotification('Ошибка импорта: ' + err.message, 'error');
+        }
     };
     reader.readAsText(file);
     event.target.value = '';
 }
 
 // ================================================================
-// ЭКСПОРТ ВСЕХ ДАННЫХ (ЧЕРЕЗ SHARE)
+// ЭКСПОРТ/ИМПОРТ ВСЕХ ДАННЫХ (для полного бэкапа)
 // ================================================================
 
-async function exportAllData() {
-    const data = { bases: state.bases, flowers: state.flowers, user: state.user };
-    const jsonString = JSON.stringify(data, null, 2);
-    const fileName = `all_data_${new Date().toISOString().split('T')[0]}.json`;
-
-    console.log('📤 Экспорт всех данных через Share:', { fileName, isNative });
-
-    try {
-        if (isNative && Share) {
-            await Share.share({
-                title: 'Все данные PhytoNote',
-                text: `📋 Полный экспорт данных PhytoNote\n📁 Коллекций: ${state.bases.length}\n🌱 Растений: ${state.flowers.length}\n📅 Экспортировано: ${new Date().toLocaleDateString('ru-RU')}\n\nДанные прилагаются в виде файла.`,
-                files: [{
-                    data: jsonString,
-                    mimeType: 'application/json',
-                    fileName: fileName
-                }]
-            });
-            
-            alert('✅ Открыто окно "Поделиться"! Выберите куда сохранить или отправить файл.');
-        } else {
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            alert(`✅ Все данные экспортированы!\n📁 Папка: Загрузки (Downloads)\n📄 Файл: ${fileName}`);
-        }
-    } catch (error) {
-        alert(`❌ Ошибка при экспорте: ${error.message}`);
-    }
+function exportAllData() {
+    const data = {
+        type: 'all',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        references: state.references,
+        schemes: state.schemes,
+        equipment: state.equipment,
+        cheatsheets: state.cheatsheets,
+        user: state.user
+    };
+    
+    downloadJSON(data, `all_data_${getTodayStr()}.json`);
+    showNotification('Все данные экспортированы!');
 }
 
 function importAllData(event) {
     const file = event.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            if (data.bases && data.flowers) {
-                state.bases = data.bases;
-                state.flowers = data.flowers;
-                state.user = data.user || {
-                    name: 'Вы',
-                    email: '',
-                    avatar: null,
-                    notifications: { push: true, email: false },
-                    display_settings: {
-                        show_placement: true,
-                        show_condition: true,
-                        show_light: true,
-                        show_watering: true,
-                        show_fertilizing: true,
-                        show_latin_name: false,
-                        show_planting_date: false,
-                        show_fertilizing_period: false,
-                        show_last_repotting: false,
-                        show_notes: false,
-                        show_care_info: false,
-                    }
-                };
-                saveState();
-                renderAll();
-                renderCare();
-                renderCalendar();
-                alert('✅ Данные успешно импортированы!');
-            } else {
-                alert('❌ Неверный формат файла');
+            
+            if (data.type !== 'all' || !data.references) {
+                throw new Error('Неверный формат файла');
             }
+            
+            const total = (data.references?.length || 0) + 
+                         (data.schemes?.length || 0) + 
+                         (data.equipment?.length || 0) + 
+                         (data.cheatsheets?.length || 0);
+            
+            const action = confirm(`Найдено ${total} записей.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
+            
+            if (action) {
+                let added = { refs: 0, schemes: 0, eq: 0, cs: 0 };
+                
+                (data.references || []).forEach(newRef => {
+                    if (!state.references.some(r => r.id === newRef.id)) {
+                        state.references.push(newRef);
+                        added.refs++;
+                    }
+                });
+                
+                (data.schemes || []).forEach(newScheme => {
+                    if (!state.schemes.some(s => s.id === newScheme.id)) {
+                        state.schemes.push(newScheme);
+                        added.schemes++;
+                    }
+                });
+                
+                (data.equipment || []).forEach(newEq => {
+                    if (!state.equipment.some(e => e.id === newEq.id)) {
+                        state.equipment.push(newEq);
+                        added.eq++;
+                    }
+                });
+                
+                (data.cheatsheets || []).forEach(newCs => {
+                    if (!state.cheatsheets.some(c => c.id === newCs.id)) {
+                        state.cheatsheets.push(newCs);
+                        added.cs++;
+                    }
+                });
+                
+                showNotification(`Добавлено: 📸${added.refs} 💡${added.schemes} 📷${added.eq} 📋${added.cs}`);
+            } else {
+                state.references = data.references || [];
+                state.schemes = data.schemes || [];
+                state.equipment = data.equipment || [];
+                state.cheatsheets = data.cheatsheets || [];
+                if (data.user) {
+                    state.user = data.user;
+                }
+                showNotification('Все данные заменены!');
+            }
+            
+            saveState();
+            renderAll();
+            updateCounts();
+            
         } catch (err) {
-            alert('❌ Ошибка чтения файла: ' + err.message);
+            showNotification('Ошибка импорта: ' + err.message, 'error');
         }
     };
     reader.readAsText(file);
     event.target.value = '';
 }
 
-function getLogs() {
-    try {
-        const raw = localStorage.getItem('appLogs');
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) { return []; }
-}
+// ================================================================
+// ФУНКЦИИ "ПОДЕЛИТЬСЯ" (Web Share API) - ТОЛЬКО В ПРОФИЛЕ
+// ================================================================
 
-async function exportLogs() {
-    const logs = getLogs();
-    if (logs.length === 0) {
-        alert('Логи пусты');
+function shareReferencesData() {
+    if (state.references.length === 0) {
+        showNotification('Нет референсов для публикации', 'warning');
         return;
     }
-    const jsonString = JSON.stringify(logs, null, 2);
-    const fileName = `phytonote_logs_${new Date().toISOString().split('T')[0]}.json`;
-
-    try {
-        if (isNative && Share) {
-            await Share.share({
-                title: 'Логи PhytoNote',
-                text: `📋 Логи приложения\n📅 Экспортировано: ${new Date().toLocaleDateString('ru-RU')}\n📄 Записей: ${logs.length}`,
-                files: [{
-                    data: jsonString,
-                    mimeType: 'application/json',
-                    fileName: fileName
-                }]
-            });
-            alert('✅ Открыто окно "Поделиться"!');
-        } else {
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            alert(`✅ Логи экспортированы!\n📁 Папка: Загрузки (Downloads)\n📄 Файл: ${fileName}`);
-        }
-    } catch (error) {
-        alert(`❌ Ошибка при экспорте: ${error.message}`);
+    
+    if (!navigator.share) {
+        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
+        return;
     }
+    
+    const data = {
+        type: 'references',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.references.length,
+        data: state.references
+    };
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const file = new File([blob], `references_${getTodayStr()}.json`, { type: 'application/json' });
+    
+    navigator.share({
+        title: 'Мои референсы',
+        text: `📸 ${state.references.length} референсов`,
+        files: [file]
+    }).then(() => {
+        console.log('✅ Данные отправлены!');
+    }).catch(err => {
+        if (err.name !== 'AbortError') {
+            console.error('❌ Ошибка:', err);
+            showNotification('Ошибка при публикации', 'error');
+        }
+    });
+}
+
+function shareSchemesData() {
+    if (state.schemes.length === 0) {
+        showNotification('Нет схем для публикации', 'warning');
+        return;
+    }
+    
+    if (!navigator.share) {
+        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'schemes',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.schemes.length,
+        data: state.schemes
+    };
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const file = new File([blob], `schemes_${getTodayStr()}.json`, { type: 'application/json' });
+    
+    navigator.share({
+        title: 'Мои схемы света',
+        text: `💡 ${state.schemes.length} схем`,
+        files: [file]
+    }).catch(err => {
+        if (err.name !== 'AbortError') {
+            console.error('❌ Ошибка:', err);
+        }
+    });
+}
+
+function shareEquipmentData() {
+    if (state.equipment.length === 0) {
+        showNotification('Нет оборудования для публикации', 'warning');
+        return;
+    }
+    
+    if (!navigator.share) {
+        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'equipment',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.equipment.length,
+        data: state.equipment
+    };
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const file = new File([blob], `equipment_${getTodayStr()}.json`, { type: 'application/json' });
+    
+    navigator.share({
+        title: 'Моё оборудование',
+        text: `📷 ${state.equipment.length} единиц`,
+        files: [file]
+    }).catch(err => {
+        if (err.name !== 'AbortError') {
+            console.error('❌ Ошибка:', err);
+        }
+    });
+}
+
+function shareCheatsheetsData() {
+    if (state.cheatsheets.length === 0) {
+        showNotification('Нет шпаргалок для публикации', 'warning');
+        return;
+    }
+    
+    if (!navigator.share) {
+        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'cheatsheets',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        count: state.cheatsheets.length,
+        data: state.cheatsheets
+    };
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const file = new File([blob], `cheatsheets_${getTodayStr()}.json`, { type: 'application/json' });
+    
+    navigator.share({
+        title: 'Мои шпаргалки',
+        text: `📋 ${state.cheatsheets.length} шпаргалок`,
+        files: [file]
+    }).catch(err => {
+        if (err.name !== 'AbortError') {
+            console.error('❌ Ошибка:', err);
+        }
+    });
+}
+
+function renderAll() {
+    renderReferences();
+    renderSchemes();
+    renderEquipment();
+    renderCheatsheets();
+    updateCounts();
+    updateStorageSize();
 }
