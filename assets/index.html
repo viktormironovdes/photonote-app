@@ -33,6 +33,41 @@
 
     <!-- 1. РЕФЕРЕНСЫ (Главная) -->
     <div class="page active" id="page-references">
+        
+        <!-- НОВЫЕ ФИЛЬТРЫ ДЛЯ ПОРТРЕТОВ -->
+        <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;background:var(--bg-card);border-radius:var(--radius);padding:12px 16px;border:1px solid var(--border-color);">
+            <select id="filterPortraitType" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                <option value="all">👤 Все типы</option>
+                <option value="single">👤 Одиночный</option>
+                <option value="pair">👥 Парный</option>
+                <option value="group">👥 Групповой</option>
+            </select>
+            
+            <select id="filterColorType" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                <option value="all">🎨 Все</option>
+                <option value="color">🌈 Цветной</option>
+                <option value="bw">⚫ Чёрно-белый</option>
+            </select>
+            
+            <select id="filterFraming" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                <option value="all">📐 Все кадры</option>
+                <option value="head">👤 Голова</option>
+                <option value="bust">👤 Погрудный</option>
+                <option value="waist">👤 Поясной</option>
+                <option value="knee">👤 Поколенный</option>
+                <option value="full">👤 В полный рост</option>
+            </select>
+            
+            <select id="filterPose" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                <option value="all">🧘 Все позы</option>
+                <option value="standing">🧍 Стоя</option>
+                <option value="sitting">🪑 Сидя</option>
+                <option value="lying">🛌 Лёжа</option>
+                <option value="moving">🏃 В движении</option>
+                <option value="mixed">🔄 Смешанная</option>
+            </select>
+        </div>
+        
         <div class="filter-bar">
             <input class="search-bar" id="referencesSearch" placeholder="🔍 Поиск по названию..." oninput="applyFilters()">
             <div class="filter-tags" id="filterTagsContainer">
@@ -108,8 +143,56 @@
             <span class="value" id="totalCheatsheets">0</span>
         </div>
 
-        <div style="margin-top:16px;">
-            <div style="font-weight:600;margin-bottom:6px;">📂 Управление данными</div>
+        <!-- ============================================================
+        ПОДЕЛИТЬСЯ (Web Share API)
+        ============================================================ -->
+        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
+            <div style="font-weight:600;margin-bottom:8px;">📤 Поделиться данными</div>
+            
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <button class="btn btn-sm btn-success" onclick="shareReferencesData()" style="flex:1;min-width:80px;">📸 Референсы</button>
+                <button class="btn btn-sm btn-success" onclick="shareSchemesData()" style="flex:1;min-width:80px;">💡 Схемы</button>
+                <button class="btn btn-sm btn-success" onclick="shareEquipmentData()" style="flex:1;min-width:80px;">📷 Оборудование</button>
+                <button class="btn btn-sm btn-success" onclick="shareCheatsheetsData()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+            </div>
+            <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
+                📱 Открывает меню "Поделиться" (Telegram, WhatsApp, Email и др.)
+            </div>
+        </div>
+
+        <!-- ============================================================
+        НЕЗАВИСИМЫЙ ЭКСПОРТ/ИМПОРТ
+        ============================================================ -->
+        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
+            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт / Импорт (файлы)</div>
+            
+            <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">📤 Экспорт</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <button class="btn btn-sm btn-outline" onclick="exportReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
+                <button class="btn btn-sm btn-outline" onclick="exportSchemes()" style="flex:1;min-width:80px;">💡 Схемы</button>
+                <button class="btn btn-sm btn-outline" onclick="exportEquipment()" style="flex:1;min-width:80px;">📷 Оборудование</button>
+                <button class="btn btn-sm btn-outline" onclick="exportCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+            </div>
+            
+            <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">📥 Импорт</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importReferencesInput').click()" style="flex:1;min-width:80px;">📸 Референсы</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importSchemesInput').click()" style="flex:1;min-width:80px;">💡 Схемы</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importEquipmentInput').click()" style="flex:1;min-width:80px;">📷 Оборудование</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importCheatsheetsInput').click()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+            </div>
+            
+            <input type="file" id="importReferencesInput" accept=".json" style="display:none" onchange="importReferences(event)">
+            <input type="file" id="importSchemesInput" accept=".json" style="display:none" onchange="importSchemes(event)">
+            <input type="file" id="importEquipmentInput" accept=".json" style="display:none" onchange="importEquipment(event)">
+            <input type="file" id="importCheatsheetsInput" accept=".json" style="display:none" onchange="importCheatsheets(event)">
+        </div>
+
+        <!-- ============================================================
+        ВСЕ ДАННЫЕ (для полного бэкапа)
+        ============================================================ -->
+        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
+            <div style="font-weight:600;margin-bottom:6px;">💾 Все данные (бэкап)</div>
             <button class="btn btn-outline" onclick="exportAllData()" style="margin-top:2px;">📤 Экспорт всех данных</button>
             <button class="btn btn-outline" onclick="document.getElementById('importAllInput').click()" style="margin-top:2px;">📥 Импорт всех данных</button>
             <input type="file" id="importAllInput" accept=".json" style="display:none" onchange="importAllData(event)">
@@ -176,6 +259,38 @@
                     <input id="refTagInput" placeholder="Введите тег и нажмите Enter..." onkeydown="addRefTagFromInput(event)">
                     <div class="selected-tags" id="refSelectedTags"></div>
                 </div>
+
+                <!-- НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ -->
+                <label>👤 Тип портрета</label>
+                <select id="refPortraitType" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
+                    <option value="single">👤 Одиночный</option>
+                    <option value="pair">👥 Парный</option>
+                    <option value="group">👥 Групповой</option>
+                </select>
+
+                <label>🎨 Цветность</label>
+                <select id="refColorType" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
+                    <option value="color">🌈 Цветной</option>
+                    <option value="bw">⚫ Чёрно-белый</option>
+                </select>
+
+                <label>📐 Кадрирование</label>
+                <select id="refFraming" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
+                    <option value="head">👤 Голова</option>
+                    <option value="bust">👤 Погрудный</option>
+                    <option value="waist">👤 Поясной</option>
+                    <option value="knee">👤 Поколенный</option>
+                    <option value="full">👤 В полный рост</option>
+                </select>
+
+                <label>🧘 Поза модели</label>
+                <select id="refPose" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
+                    <option value="standing">🧍 Стоя</option>
+                    <option value="sitting">🪑 Сидя</option>
+                    <option value="lying">🛌 Лёжа</option>
+                    <option value="moving">🏃 В движении</option>
+                    <option value="mixed">🔄 Смешанная</option>
+                </select>
 
                 <label>💡 Связанные схемы света</label>
                 <div id="refSchemeCheckboxes"></div>
@@ -323,7 +438,7 @@
     <script src="js/app.js"></script>
 
     <!-- ================================================================
-    SERVICE WORKER (только для HTTPS, не для file://)
+    SERVICE WORKER (только для HTTPS)
     ================================================================ -->
     <script>
         if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
