@@ -1,6 +1,19 @@
 // ================================================================
-// ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ + ПОДЕЛИТЬСЯ
+// ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ
 // ================================================================
+
+// Проверяем, доступен ли Capacitor Filesystem
+let CapacitorFilesystem = null;
+try {
+    // Пробуем получить Capacitor из глобального объекта
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        // Для Capacitor 6+ Filesystem доступен через import
+        // Но в нашем случае мы будем использовать глобальный объект
+        console.log('✅ Capacitor native platform detected');
+    }
+} catch (e) {
+    console.log('⚠️ Capacitor not available');
+}
 
 function loadProfile() {
     const nameInput = document.getElementById('profileNameInput');
@@ -87,8 +100,8 @@ function exportReferences() {
         data: state.references
     };
     
-    downloadJSON(data, `references_${getTodayStr()}.json`);
-    showNotification(`Экспортировано ${state.references.length} референсов!`);
+    const jsonString = JSON.stringify(data, null, 2);
+    saveFileNative(jsonString, `references_${getTodayStr()}.json`, '📸 Референсы');
 }
 
 function exportSchemes() {
@@ -105,8 +118,8 @@ function exportSchemes() {
         data: state.schemes
     };
     
-    downloadJSON(data, `schemes_${getTodayStr()}.json`);
-    showNotification(`Экспортировано ${state.schemes.length} схем!`);
+    const jsonString = JSON.stringify(data, null, 2);
+    saveFileNative(jsonString, `schemes_${getTodayStr()}.json`, '💡 Схемы света');
 }
 
 function exportEquipment() {
@@ -123,8 +136,8 @@ function exportEquipment() {
         data: state.equipment
     };
     
-    downloadJSON(data, `equipment_${getTodayStr()}.json`);
-    showNotification(`Экспортировано ${state.equipment.length} единиц оборудования!`);
+    const jsonString = JSON.stringify(data, null, 2);
+    saveFileNative(jsonString, `equipment_${getTodayStr()}.json`, '📷 Оборудование');
 }
 
 function exportCheatsheets() {
@@ -141,12 +154,105 @@ function exportCheatsheets() {
         data: state.cheatsheets
     };
     
-    downloadJSON(data, `cheatsheets_${getTodayStr()}.json`);
-    showNotification(`Экспортировано ${state.cheatsheets.length} шпаргалок!`);
+    const jsonString = JSON.stringify(data, null, 2);
+    saveFileNative(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Шпаргалки');
 }
 
-function downloadJSON(data, filename) {
+// ================================================================
+// ЭКСПОРТ ВСЕХ ДАННЫХ
+// ================================================================
+
+function exportAllData() {
+    const data = {
+        type: 'all',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        references: state.references,
+        schemes: state.schemes,
+        equipment: state.equipment,
+        cheatsheets: state.cheatsheets,
+        user: state.user
+    };
+    
     const jsonString = JSON.stringify(data, null, 2);
+    saveFileNative(jsonString, `all_data_${getTodayStr()}.json`, '💾 Все данные');
+}
+
+// ================================================================
+// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ФАЙЛА
+// ================================================================
+
+function saveFileNative(jsonString, filename, title) {
+    // Пробуем использовать Capacitor Filesystem (для Android APK)
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        saveFileCapacitor(jsonString, filename, title);
+    } else {
+        // Запасной вариант для браузера
+        downloadJsonString(jsonString, filename);
+    }
+}
+
+// ================================================================
+// СОХРАНЕНИЕ ЧЕРЕЗ CAPACITOR FILESYSTEM (Android)
+// ================================================================
+
+function saveFileCapacitor(jsonString, filename, title) {
+    // Показываем уведомление о начале сохранения
+    showNotification(`💾 Сохранение "${filename}"...`, 'info');
+    
+    // Используем Capacitor Filesystem через глобальный объект
+    // (плагин должен быть установлен и синхронизирован)
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
+        
+        // Запрашиваем разрешение на запись (для Android 13+)
+        Filesystem.requestPermissions().then((result) => {
+            if (result.permissions.storage === 'granted' || result.permissions.storage === 'prompt') {
+                // Сохраняем файл в папку Documents
+                Filesystem.writeFile({
+                    path: filename,
+                    data: jsonString,
+                    directory: 'DOCUMENTS',
+                    encoding: 'utf8'
+                }).then(() => {
+                    showNotification(`✅ Файл "${filename}" сохранён в Документы!`, 'success');
+                }).catch((err) => {
+                    console.error('❌ Ошибка сохранения:', err);
+                    // Если не получилось в Documents, пробуем в Download
+                    Filesystem.writeFile({
+                        path: filename,
+                        data: jsonString,
+                        directory: 'DOWNLOAD',
+                        encoding: 'utf8'
+                    }).then(() => {
+                        showNotification(`✅ Файл "${filename}" сохранён в Загрузки!`, 'success');
+                    }).catch((err2) => {
+                        console.error('❌ Ошибка сохранения в Download:', err2);
+                        // Если всё失败了 — скачиваем через браузер
+                        downloadJsonString(jsonString, filename);
+                    });
+                });
+            } else {
+                // Нет разрешения — скачиваем через браузер
+                showNotification('⚠️ Нет разрешения на запись, файл скачан', 'warning');
+                downloadJsonString(jsonString, filename);
+            }
+        }).catch(() => {
+            // Если requestPermissions не сработал — скачиваем через браузер
+            downloadJsonString(jsonString, filename);
+        });
+    } else {
+        // Если Capacitor Filesystem не доступен — скачиваем через браузер
+        console.log('⚠️ Capacitor Filesystem не найден, используем браузерную загрузку');
+        downloadJsonString(jsonString, filename);
+    }
+}
+
+// ================================================================
+// БРАУЗЕРНАЯ ЗАГРУЗКА (запасной вариант)
+// ================================================================
+
+function downloadJsonString(jsonString, filename) {
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -156,6 +262,7 @@ function downloadJSON(data, filename) {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showNotification(`📥 Файл "${filename}" скачан!`, 'success');
 }
 
 // ================================================================
@@ -338,26 +445,6 @@ function importCheatsheets(event) {
     event.target.value = '';
 }
 
-// ================================================================
-// ЭКСПОРТ/ИМПОРТ ВСЕХ ДАННЫХ
-// ================================================================
-
-function exportAllData() {
-    const data = {
-        type: 'all',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        references: state.references,
-        schemes: state.schemes,
-        equipment: state.equipment,
-        cheatsheets: state.cheatsheets,
-        user: state.user
-    };
-    
-    downloadJSON(data, `all_data_${getTodayStr()}.json`);
-    showNotification('Все данные экспортированы!');
-}
-
 function importAllData(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -431,141 +518,6 @@ function importAllData(event) {
     };
     reader.readAsText(file);
     event.target.value = '';
-}
-
-// ================================================================
-// ФУНКЦИИ "ПОДЕЛИТЬСЯ" (Web Share API + запасной вариант)
-// ================================================================
-
-function shareReferencesData() {
-    if (state.references.length === 0) {
-        showNotification('Нет референсов для публикации', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'references',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.references.length,
-        data: state.references
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    shareData(jsonString, `references_${getTodayStr()}.json`, '📸 Мои референсы');
-}
-
-function shareSchemesData() {
-    if (state.schemes.length === 0) {
-        showNotification('Нет схем для публикации', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'schemes',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.schemes.length,
-        data: state.schemes
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    shareData(jsonString, `schemes_${getTodayStr()}.json`, '💡 Мои схемы света');
-}
-
-function shareEquipmentData() {
-    if (state.equipment.length === 0) {
-        showNotification('Нет оборудования для публикации', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'equipment',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.equipment.length,
-        data: state.equipment
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    shareData(jsonString, `equipment_${getTodayStr()}.json`, '📷 Моё оборудование');
-}
-
-function shareCheatsheetsData() {
-    if (state.cheatsheets.length === 0) {
-        showNotification('Нет шпаргалок для публикации', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'cheatsheets',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.cheatsheets.length,
-        data: state.cheatsheets
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    shareData(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Мои шпаргалки');
-}
-
-// ================================================================
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ "ПОДЕЛИТЬСЯ" (с запасным вариантом)
-// ================================================================
-
-function shareData(jsonString, filename, title) {
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], filename, { type: 'application/json' });
-    
-    // Пробуем Web Share API
-    if (navigator.share) {
-        navigator.share({
-            title: title,
-            files: [file]
-        }).then(() => {
-            console.log('✅ Данные отправлены через Share API!');
-        }).catch(err => {
-            if (err.name !== 'AbortError') {
-                console.error('❌ Ошибка Share API:', err);
-                fallbackShare(jsonString, filename);
-            }
-        });
-    } else {
-        // ЗАПАСНОЙ ВАРИАНТ: копирование в буфер обмена
-        fallbackShare(jsonString, filename);
-    }
-}
-
-// ================================================================
-// ЗАПАСНОЙ ВАРИАНТ (для APK и браузеров без Web Share API)
-// ================================================================
-
-function fallbackShare(jsonString, filename) {
-    // Пробуем скопировать JSON в буфер обмена
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(jsonString).then(() => {
-            showNotification('📋 Данные скопированы в буфер обмена!', 'success');
-        }).catch(() => {
-            // Если буфер не работает — скачиваем файл
-            downloadJsonString(jsonString, filename);
-        });
-    } else {
-        // Если ничего не работает — скачиваем файл
-        downloadJsonString(jsonString, filename);
-    }
-}
-
-function downloadJsonString(jsonString, filename) {
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showNotification(`📥 Файл "${filename}" скачан!`, 'success');
 }
 
 function renderAll() {
