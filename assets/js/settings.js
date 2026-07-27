@@ -70,7 +70,7 @@ function handleAvatarUpload(event) {
 }
 
 // ================================================================
-// ЭКСПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ (для ПК и разработки)
+// ЭКСПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ
 // ================================================================
 
 function exportReferences() {
@@ -339,7 +339,7 @@ function importCheatsheets(event) {
 }
 
 // ================================================================
-// ЭКСПОРТ/ИМПОРТ ВСЕХ ДАННЫХ (для полного бэкапа)
+// ЭКСПОРТ/ИМПОРТ ВСЕХ ДАННЫХ
 // ================================================================
 
 function exportAllData() {
@@ -434,17 +434,12 @@ function importAllData(event) {
 }
 
 // ================================================================
-// ФУНКЦИИ "ПОДЕЛИТЬСЯ" (Web Share API) - ТОЛЬКО В ПРОФИЛЕ
+// ФУНКЦИИ "ПОДЕЛИТЬСЯ" (Web Share API + запасной вариант)
 // ================================================================
 
 function shareReferencesData() {
     if (state.references.length === 0) {
         showNotification('Нет референсов для публикации', 'warning');
-        return;
-    }
-    
-    if (!navigator.share) {
-        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
         return;
     }
     
@@ -457,31 +452,12 @@ function shareReferencesData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], `references_${getTodayStr()}.json`, { type: 'application/json' });
-    
-    navigator.share({
-        title: 'Мои референсы',
-        text: `📸 ${state.references.length} референсов`,
-        files: [file]
-    }).then(() => {
-        console.log('✅ Данные отправлены!');
-    }).catch(err => {
-        if (err.name !== 'AbortError') {
-            console.error('❌ Ошибка:', err);
-            showNotification('Ошибка при публикации', 'error');
-        }
-    });
+    shareData(jsonString, `references_${getTodayStr()}.json`, '📸 Мои референсы');
 }
 
 function shareSchemesData() {
     if (state.schemes.length === 0) {
         showNotification('Нет схем для публикации', 'warning');
-        return;
-    }
-    
-    if (!navigator.share) {
-        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
         return;
     }
     
@@ -494,28 +470,12 @@ function shareSchemesData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], `schemes_${getTodayStr()}.json`, { type: 'application/json' });
-    
-    navigator.share({
-        title: 'Мои схемы света',
-        text: `💡 ${state.schemes.length} схем`,
-        files: [file]
-    }).catch(err => {
-        if (err.name !== 'AbortError') {
-            console.error('❌ Ошибка:', err);
-        }
-    });
+    shareData(jsonString, `schemes_${getTodayStr()}.json`, '💡 Мои схемы света');
 }
 
 function shareEquipmentData() {
     if (state.equipment.length === 0) {
         showNotification('Нет оборудования для публикации', 'warning');
-        return;
-    }
-    
-    if (!navigator.share) {
-        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
         return;
     }
     
@@ -528,28 +488,12 @@ function shareEquipmentData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], `equipment_${getTodayStr()}.json`, { type: 'application/json' });
-    
-    navigator.share({
-        title: 'Моё оборудование',
-        text: `📷 ${state.equipment.length} единиц`,
-        files: [file]
-    }).catch(err => {
-        if (err.name !== 'AbortError') {
-            console.error('❌ Ошибка:', err);
-        }
-    });
+    shareData(jsonString, `equipment_${getTodayStr()}.json`, '📷 Моё оборудование');
 }
 
 function shareCheatsheetsData() {
     if (state.cheatsheets.length === 0) {
         showNotification('Нет шпаргалок для публикации', 'warning');
-        return;
-    }
-    
-    if (!navigator.share) {
-        showNotification('Функция "Поделиться" не поддерживается вашим браузером', 'warning');
         return;
     }
     
@@ -562,18 +506,66 @@ function shareCheatsheetsData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
+    shareData(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Мои шпаргалки');
+}
+
+// ================================================================
+// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ "ПОДЕЛИТЬСЯ" (с запасным вариантом)
+// ================================================================
+
+function shareData(jsonString, filename, title) {
     const blob = new Blob([jsonString], { type: 'application/json' });
-    const file = new File([blob], `cheatsheets_${getTodayStr()}.json`, { type: 'application/json' });
+    const file = new File([blob], filename, { type: 'application/json' });
     
-    navigator.share({
-        title: 'Мои шпаргалки',
-        text: `📋 ${state.cheatsheets.length} шпаргалок`,
-        files: [file]
-    }).catch(err => {
-        if (err.name !== 'AbortError') {
-            console.error('❌ Ошибка:', err);
-        }
-    });
+    // Пробуем Web Share API
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            files: [file]
+        }).then(() => {
+            console.log('✅ Данные отправлены через Share API!');
+        }).catch(err => {
+            if (err.name !== 'AbortError') {
+                console.error('❌ Ошибка Share API:', err);
+                fallbackShare(jsonString, filename);
+            }
+        });
+    } else {
+        // ЗАПАСНОЙ ВАРИАНТ: копирование в буфер обмена
+        fallbackShare(jsonString, filename);
+    }
+}
+
+// ================================================================
+// ЗАПАСНОЙ ВАРИАНТ (для APK и браузеров без Web Share API)
+// ================================================================
+
+function fallbackShare(jsonString, filename) {
+    // Пробуем скопировать JSON в буфер обмена
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(jsonString).then(() => {
+            showNotification('📋 Данные скопированы в буфер обмена!', 'success');
+        }).catch(() => {
+            // Если буфер не работает — скачиваем файл
+            downloadJsonString(jsonString, filename);
+        });
+    } else {
+        // Если ничего не работает — скачиваем файл
+        downloadJsonString(jsonString, filename);
+    }
+}
+
+function downloadJsonString(jsonString, filename) {
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showNotification(`📥 Файл "${filename}" скачан!`, 'success');
 }
 
 function renderAll() {
