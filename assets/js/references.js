@@ -1,13 +1,104 @@
 // ================================================================
 // РАБОТА С РЕФЕРЕНСАМИ
+// Версия 0.1.1 — EXIF-метаданные
 // ================================================================
 
 let sliderRefs = [];
 let sliderCurrentIndex = 0;
 let sliderMenuOpen = false;
+let extractedExif = null; // Глобальная переменная для хранения извлечённых EXIF-данных (сырые данные)
 
 // ================================================================
-// РЕНДЕРИНГ СПИСКА РЕФЕРЕНСОВ (используется внутри коллекций и для поиска)
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ФОРМАТИРОВАНИЯ EXIF
+// ================================================================
+
+/**
+ * Форматирует фокусное расстояние
+ * @param {number|string} value - сырое значение из EXIF
+ * @returns {string} отформатированная строка (например, "50 мм")
+ */
+function formatFocalLength(value) {
+    if (!value) return '';
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+        return num + ' мм';
+    }
+    return String(value);
+}
+
+/**
+ * Форматирует диафрагму
+ * @param {number|string} value - сырое значение из EXIF
+ * @returns {string} отформатированная строка (например, "f/2.8")
+ */
+function formatAperture(value) {
+    if (!value) return '';
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+        return 'f/' + num.toFixed(1);
+    }
+    return 'f/' + String(value);
+}
+
+/**
+ * Форматирует выдержку
+ * @param {number|string} value - сырое значение из EXIF
+ * @returns {string} отформатированная строка (например, "1/125 с" или "2 с")
+ */
+function formatExposureTime(value) {
+    if (!value) return '';
+    
+    // Если уже строка и содержит "/" — возможно уже отформатировано
+    if (typeof value === 'string' && value.includes('/')) {
+        return value + ' с';
+    }
+    
+    const num = parseFloat(value);
+    if (isNaN(num)) return String(value);
+    
+    if (num >= 1) {
+        // Если выдержка >= 1 секунды
+        return num + ' с';
+    } else {
+        // Если выдержка < 1 секунды — преобразуем в формат 1/X
+        const denominator = Math.round(1 / num);
+        return '1/' + denominator + ' с';
+    }
+}
+
+/**
+ * Форматирует ISO
+ * @param {number|string} value - сырое значение из EXIF
+ * @returns {string} отформатированная строка (например, "100")
+ */
+function formatISO(value) {
+    if (!value) return '';
+    return String(value);
+}
+
+/**
+ * Форматирует дату
+ * @param {string} value - сырое значение из EXIF
+ * @returns {string} отформатированная строка
+ */
+function formatDateTime(value) {
+    if (!value) return '';
+    return String(value);
+}
+
+/**
+ * Форматирует камеру (Make + Model)
+ * @param {string} make - производитель
+ * @param {string} model - модель
+ * @returns {string} отформатированная строка
+ */
+function formatCamera(make, model) {
+    const camera = (make + ' ' + model).trim();
+    return camera || '';
+}
+
+// ================================================================
+// РЕНДЕРИНГ СПИСКА РЕФЕРЕНСОВ
 // ================================================================
 
 function renderReferences(references = null, containerId = 'referencesGrid') {
@@ -75,6 +166,7 @@ function renderReferences(references = null, containerId = 'referencesGrid') {
                         <span>💡 ${ref.schemeIds?.length || 0}</span>
                         <span>📷 ${ref.equipmentIds?.length || 0}</span>
                         <span>📋 ${ref.cheatSheetIds?.length || 0}</span>
+                        ${ref.exif && ref.exif.camera ? `<span>📷 ${ref.exif.camera.split(' ').pop()}</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -83,11 +175,89 @@ function renderReferences(references = null, containerId = 'referencesGrid') {
 }
 
 // ================================================================
+// EXIF-ФУНКЦИИ
+// ================================================================
+
+function extractEXIF() {
+    const fileInput = document.getElementById('refImage');
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('❌ Сначала загрузите фото');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        alert('❌ Файл должен быть изображением');
+        return;
+    }
+
+    showNotification('⏳ Извлечение EXIF...', 'info');
+
+    EXIF.getData(file, function() {
+        const make = EXIF.getTag(this, 'Make') || '';
+        const model = EXIF.getTag(this, 'Model') || '';
+        const lens = EXIF.getTag(this, 'LensModel') || EXIF.getTag(this, 'Lens') || '';
+        const focalLength = EXIF.getTag(this, 'FocalLength') || '';
+        const aperture = EXIF.getTag(this, 'FNumber') || '';
+        const exposureTime = EXIF.getTag(this, 'ExposureTime') || '';
+        const iso = EXIF.getTag(this, 'ISOSpeedRatings') || '';
+        const dateTime = EXIF.getTag(this, 'DateTime') || '';
+        const flash = EXIF.getTag(this, 'Flash') || 0;
+
+        // СОХРАНЯЕМ СЫРЫЕ ДАННЫЕ (без форматирования)
+        extractedExif = {
+            camera: (make + ' ' + model).trim(),
+            lens: lens || '',
+            focalLength: focalLength,
+            aperture: aperture,
+            exposureTime: exposureTime,
+            iso: iso,
+            dateTime: dateTime || '',
+            flash: flash
+        };
+
+        // Показываем в модалке ОТФОРМАТИРОВАННЫЕ данные (для красивого отображения)
+        const preview = document.getElementById('exifPreview');
+        const hasData = extractedExif.camera || extractedExif.focalLength || extractedExif.iso;
+        
+        if (hasData) {
+            const formattedCamera = formatCamera(extractedExif.camera, '');
+            const formattedLens = extractedExif.lens || '';
+            const formattedFocal = formatFocalLength(extractedExif.focalLength);
+            const formattedAperture = formatAperture(extractedExif.aperture);
+            const formattedExposure = formatExposureTime(extractedExif.exposureTime);
+            const formattedISO = formatISO(extractedExif.iso);
+            const formattedDate = formatDateTime(extractedExif.dateTime);
+            
+            preview.innerHTML = `
+                <div style="font-weight:600;margin-bottom:4px;">📷 EXIF данные:</div>
+                ${formattedCamera ? `<div>Камера: ${formattedCamera}</div>` : ''}
+                ${formattedLens ? `<div>Объектив: ${formattedLens}</div>` : ''}
+                ${formattedFocal ? `<div>Фокусное расстояние: ${formattedFocal}</div>` : ''}
+                ${formattedAperture ? `<div>Диафрагма: ${formattedAperture}</div>` : ''}
+                ${formattedExposure ? `<div>Выдержка: ${formattedExposure}</div>` : ''}
+                ${formattedISO ? `<div>ISO: ${formattedISO}</div>` : ''}
+                ${formattedDate ? `<div>Дата съёмки: ${formattedDate}</div>` : ''}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">✅ Данные извлечены и будут сохранены</div>
+            `;
+            preview.style.display = 'block';
+            showNotification('✅ EXIF извлечён!', 'success');
+        } else {
+            preview.innerHTML = `
+                <div style="color:var(--text-muted);">⚠️ EXIF данные не найдены в этом файле</div>
+            `;
+            preview.style.display = 'block';
+            extractedExif = null;
+            showNotification('⚠️ EXIF не найден', 'warning');
+        }
+    });
+}
+
+// ================================================================
 // СЛАЙДЕР-КАРТОЧКА РЕФЕРЕНСА
 // ================================================================
 
 function openReferenceSlider(referenceId) {
-    // Определяем список референсов (из фильтра или из коллекции)
     let refs = [];
     if (state.filteredReferences && state.filteredReferences.length > 0) {
         refs = state.filteredReferences;
@@ -210,6 +380,36 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
+    // EXIF данные (ОТФОРМАТИРОВАННЫЕ при отображении, без иконок)
+    if (ref.exif) {
+        const e = ref.exif;
+        const hasExif = e.camera || e.focalLength || e.iso || e.aperture || e.exposureTime;
+        if (hasExif) {
+            const formattedCamera = formatCamera(e.camera, '');
+            const formattedLens = e.lens || '';
+            const formattedFocal = formatFocalLength(e.focalLength);
+            const formattedAperture = formatAperture(e.aperture);
+            const formattedExposure = formatExposureTime(e.exposureTime);
+            const formattedISO = formatISO(e.iso);
+            const formattedDate = formatDateTime(e.dateTime);
+            
+            html += `
+                <div class="slider-field">
+                    <span class="slider-label">📷 EXIF</span>
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+                        ${formattedCamera ? `<div>Камера: ${formattedCamera}</div>` : ''}
+                        ${formattedLens ? `<div>Объектив: ${formattedLens}</div>` : ''}
+                        ${formattedFocal ? `<div>Фокусное расстояние: ${formattedFocal}</div>` : ''}
+                        ${formattedAperture ? `<div>Диафрагма: ${formattedAperture}</div>` : ''}
+                        ${formattedExposure ? `<div>Выдержка: ${formattedExposure}</div>` : ''}
+                        ${formattedISO ? `<div>ISO: ${formattedISO}</div>` : ''}
+                        ${formattedDate ? `<div>Дата съёмки: ${formattedDate}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
     // Характеристики портрета
     html += `
         <div class="slider-field">
@@ -268,7 +468,6 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
-    // NSFW в режиме редактирования
     if (isEdit) {
         html += `
             <div class="slider-field">
@@ -842,10 +1041,10 @@ function showAddReferenceModal(collectionId = null) {
     document.getElementById('refFavorite').checked = false;
     document.getElementById('refImageCompressed').value = '';
     document.getElementById('refNSFW').checked = false;
+    document.getElementById('exifPreview').style.display = 'none';
+    extractedExif = null;
     
-    // Если коллекция передана — выбираем её
     if (collectionId) {
-        // Находим коллекцию в списке и выбираем
         const select = document.getElementById('refCollection');
         if (select) {
             select.value = collectionId;
@@ -950,6 +1149,7 @@ function saveReference() {
     const compressedImage = document.getElementById('refImageCompressed')?.value || null;
     const tags = getRefTagsFromModal();
     const collectionId = document.getElementById('refCollection')?.value || null;
+    const exif = extractedExif;
     
     const portraitType = document.getElementById('refPortraitType')?.value || 'single';
     const colorType = document.getElementById('refColorType')?.value || 'color';
@@ -985,34 +1185,38 @@ function saveReference() {
     
     if (compressedImage) {
         image = compressedImage;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId, exif);
     } else if (imageInput.files && imageInput.files[0]) {
         compressImage(imageInput.files[0], 1200, 1200, function(compressedBase64) {
-            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
+            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId, exif);
         });
     } else if (editId) {
         const existing = getReference(editId);
         image = existing ? existing.image : null;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId, exif);
     } else {
-        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
+        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId, exif);
     }
 }
 
-function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId) {
+function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId, exif) {
     if (editId) {
         updateReference(editId, {
             name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW,
-            portraitType, colorType, framing, pose, collectionId
+            portraitType, colorType, framing, pose, collectionId, exif
         });
         showNotification('Референс обновлён!');
     } else {
         addReference({
             name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW,
-            portraitType, colorType, framing, pose, collectionId
+            portraitType, colorType, framing, pose, collectionId, exif
         });
         showNotification('Референс добавлен!');
     }
+    
+    // Очищаем EXIF после сохранения
+    extractedExif = null;
+    document.getElementById('exifPreview').style.display = 'none';
     
     closeReferenceModal();
     applyFilters();
@@ -1028,4 +1232,6 @@ function saveReferenceData(editId, name, description, image, tags, schemeIds, eq
 function closeReferenceModal() {
     document.getElementById('referenceModal').classList.remove('show');
     document.getElementById('refImageCompressed').value = '';
+    extractedExif = null;
+    document.getElementById('exifPreview').style.display = 'none';
 }
