@@ -6,8 +6,14 @@ let sliderRefs = [];
 let sliderCurrentIndex = 0;
 let sliderMenuOpen = false;
 
-function renderReferences(references = null) {
-    const container = document.getElementById('referencesGrid');
+// ================================================================
+// РЕНДЕРИНГ СПИСКА РЕФЕРЕНСОВ (используется внутри коллекций и для поиска)
+// ================================================================
+
+function renderReferences(references = null, containerId = 'referencesGrid') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
     const list = references || state.filteredReferences || state.references;
     
     if (list.length === 0) {
@@ -15,15 +21,13 @@ function renderReferences(references = null) {
             <div class="empty-state">
                 <span class="icon-big">📸</span>
                 <p>Нет референсов</p>
-                <p class="sub">Добавьте свой первый референс</p>
-                <button class="btn" onclick="showAddReferenceModal()" style="margin-top:12px;max-width:280px;margin-left:auto;margin-right:auto;">➕ Добавить референс</button>
+                <p class="sub">${state.currentCollectionId ? 'Добавьте референс в эту коллекцию' : 'Создайте коллекцию и добавьте референсы'}</p>
             </div>
         `;
         return;
     }
     
     container.innerHTML = list.map(ref => {
-        // Иконки для дополнительных характеристик
         const typeIcons = {
             single: '👤',
             pair: '👥',
@@ -53,6 +57,7 @@ function renderReferences(references = null) {
                 <div class="image-wrapper">
                     ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" loading="lazy">` : `<div class="no-photo">📸</div>`}
                     ${ref.isFavorite ? '<span class="favorite-badge">❤️</span>' : ''}
+                    ${ref.isNSFW ? '<span class="nsfw-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(200,50,50,0.85);color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;z-index:2;">🔞</span>' : ''}
                 </div>
                 <div class="info">
                     <div class="title">${ref.name}</div>
@@ -61,10 +66,10 @@ function renderReferences(references = null) {
                         ${(ref.tags || []).length > 2 ? `<span class="tag">+${(ref.tags || []).length - 2}</span>` : ''}
                     </div>
                     <div class="meta">
-                        <span>${typeIcons[ref.portraitType] || '👤'} ${ref.portraitType || 'single'}</span>
-                        <span>${colorIcons[ref.colorType] || '🌈'} ${ref.colorType || 'color'}</span>
-                        <span>${framingIcons[ref.framing] || '📐'} ${ref.framing || 'bust'}</span>
-                        <span>${poseIcons[ref.pose] || '🧍'} ${ref.pose || 'standing'}</span>
+                        <span>${typeIcons[ref.portraitType] || '👤'}</span>
+                        <span>${colorIcons[ref.colorType] || '🌈'}</span>
+                        <span>${framingIcons[ref.framing] || '📐'}</span>
+                        <span>${poseIcons[ref.pose] || '🧍'}</span>
                     </div>
                     <div class="meta">
                         <span>💡 ${ref.schemeIds?.length || 0}</span>
@@ -77,8 +82,20 @@ function renderReferences(references = null) {
     }).join('');
 }
 
+// ================================================================
+// СЛАЙДЕР-КАРТОЧКА РЕФЕРЕНСА
+// ================================================================
+
 function openReferenceSlider(referenceId) {
-    const refs = state.filteredReferences.length > 0 ? state.filteredReferences : state.references;
+    // Определяем список референсов (из фильтра или из коллекции)
+    let refs = [];
+    if (state.filteredReferences && state.filteredReferences.length > 0) {
+        refs = state.filteredReferences;
+    } else if (state.currentCollectionId) {
+        refs = getReferencesByCollection(state.currentCollectionId);
+    } else {
+        refs = state.references;
+    }
     
     if (refs.length === 0) {
         showNotification('Нет референсов для показа', 'warning');
@@ -119,6 +136,7 @@ function renderSliderContent() {
     
     container.innerHTML = `
         ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" onclick="toggleSliderMenu()">` : `<div class="no-photo" onclick="toggleSliderMenu()">📸</div>`}
+        ${ref.isNSFW ? '<div style="position:absolute;top:60px;right:20px;background:rgba(200,50,50,0.9);color:#fff;padding:4px 14px;border-radius:20px;font-size:14px;font-weight:600;z-index:5;">🔞 NSFW</div>' : ''}
     `;
     
     renderSliderMenu(ref);
@@ -137,8 +155,8 @@ function renderSliderMenu(ref) {
     const schemes = getSchemesForReference(ref.id);
     const equipment = getEquipmentForReference(ref.id);
     const cheatsheets = getCheatsheetsForReference(ref.id);
+    const collection = getCollection(ref.collectionId);
     
-    // Иконки для характеристик
     const typeIcons = {
         single: '👤',
         pair: '👥',
@@ -174,6 +192,22 @@ function renderSliderMenu(ref) {
             <button class="slider-menu-close-btn" onclick="event.stopPropagation(); closeSlider()">✕</button>
         </div>
         <div class="slider-menu-body">
+    `;
+    
+    // Коллекция
+    html += `
+        <div class="slider-field">
+            <span class="slider-label">📁 Коллекция</span>
+            <span class="slider-value">${collection ? collection.name : '—'}</span>
+        </div>
+    `;
+    
+    // NSFW
+    html += `
+        <div class="slider-field">
+            <span class="slider-label">🔞 NSFW</span>
+            <span class="slider-value">${ref.isNSFW ? '✅ Да' : '—'}</span>
+        </div>
     `;
     
     // Характеристики портрета
@@ -234,6 +268,19 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
+    // NSFW в режиме редактирования
+    if (isEdit) {
+        html += `
+            <div class="slider-field">
+                <span class="slider-label">🔞 NSFW</span>
+                <select id="sliderNSFW" style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
+                    <option value="false" ${!ref.isNSFW ? 'selected' : ''}>❌ Нет</option>
+                    <option value="true" ${ref.isNSFW ? 'selected' : ''}>🔞 Да</option>
+                </select>
+            </div>
+        `;
+    }
+    
     if (isEdit) {
         html += `
             <div class="slider-field">
@@ -273,7 +320,7 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
-    // СВЯЗИ С КНОПКАМИ ДОБАВЛЕНИЯ
+    // Связи
     html += `
         <div class="slider-connections">
             <div class="connection-group">
@@ -289,9 +336,6 @@ function renderSliderMenu(ref) {
                         </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанных схем</span>'}
                 </div>
-                ${schemes.length > 0 && !isEdit ? `
-                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на схему для просмотра</div>
-                ` : ''}
             </div>
             
             <div class="connection-group">
@@ -307,9 +351,6 @@ function renderSliderMenu(ref) {
                         </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанного оборудования</span>'}
                 </div>
-                ${equipment.length > 0 && !isEdit ? `
-                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на оборудование для просмотра</div>
-                ` : ''}
             </div>
             
             <div class="connection-group">
@@ -325,14 +366,11 @@ function renderSliderMenu(ref) {
                         </span>
                     `).join('') : '<span style="color:#666;font-size:12px;">Нет привязанных шпаргалок</span>'}
                 </div>
-                ${cheatsheets.length > 0 && !isEdit ? `
-                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);">🖱️ Нажмите на шпаргалку для просмотра</div>
-                ` : ''}
             </div>
         </div>
     `;
     
-    // ПОДГРУЗКА СХЕМ
+    // Подгрузка схем
     if (schemes.length > 0 && !isEdit) {
         html += `
             <div style="margin-top:12px;border-top:1px solid var(--border-color);padding-top:12px;">
@@ -350,10 +388,17 @@ function renderSliderMenu(ref) {
         `;
     }
     
+    // Действия
     html += `
         <div class="slider-actions">
             <button class="btn btn-sm btn-success" onclick="toggleFavoriteFromSlider()">
                 ${ref.isFavorite ? '❤️ В избранном' : '🤍 В избранное'}
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); showCopyToCollectionModal('${ref.id}')">
+                📋 Копировать
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); showMoveToCollectionModal('${ref.id}')">
+                📤 Переместить
             </button>
             <button class="btn btn-sm btn-danger" onclick="deleteReferenceFromSlider()">
                 🗑 Удалить
@@ -367,7 +412,241 @@ function renderSliderMenu(ref) {
 }
 
 // ================================================================
-// ДОБАВЛЕНИЕ/УДАЛЕНИЕ СВЯЗЕЙ В СЛАЙДЕРЕ
+// РЕДАКТИРОВАНИЕ В СЛАЙДЕРЕ
+// ================================================================
+
+function toggleSliderEdit() {
+    state.isDetailEdit = !state.isDetailEdit;
+    if (sliderRefs.length > 0 && sliderCurrentIndex < sliderRefs.length) {
+        const ref = sliderRefs[sliderCurrentIndex];
+        if (!state.isDetailEdit) {
+            saveSliderEdit(ref.id);
+        } else {
+            renderSliderContent();
+        }
+    }
+}
+
+function saveSliderEdit(refId) {
+    const ref = getReference(refId);
+    if (!ref) return;
+    
+    const description = document.getElementById('sliderDescription')?.value?.trim() || '';
+    const portraitType = document.getElementById('sliderPortraitType')?.value || ref.portraitType;
+    const colorType = document.getElementById('sliderColorType')?.value || ref.colorType;
+    const framing = document.getElementById('sliderFraming')?.value || ref.framing;
+    const pose = document.getElementById('sliderPose')?.value || ref.pose;
+    const isNSFW = document.getElementById('sliderNSFW')?.value === 'true';
+    
+    const tagContainer = document.getElementById('sliderSelectedTags');
+    const tags = [];
+    if (tagContainer) {
+        tagContainer.querySelectorAll('.tag-item').forEach(item => {
+            const text = item.textContent.replace('✕', '').trim();
+            if (text) tags.push(text);
+        });
+    }
+    
+    updateReference(refId, {
+        description: description,
+        tags: tags,
+        portraitType: portraitType,
+        colorType: colorType,
+        framing: framing,
+        pose: pose,
+        isNSFW: isNSFW
+    });
+    
+    state.isDetailEdit = false;
+    renderSliderContent();
+    applyFilters();
+    renderReferences();
+    if (state.currentCollectionId) {
+        renderCollectionReferences();
+    }
+    renderCollections();
+    showNotification('Референс обновлён!');
+}
+
+// ================================================================
+// ТЕГИ В СЛАЙДЕРЕ
+// ================================================================
+
+function addSliderTagFromInput(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = document.getElementById('sliderTagInput');
+        const tag = input.value.trim();
+        if (tag) {
+            const container = document.getElementById('sliderSelectedTags');
+            const existing = container.querySelectorAll('.tag-item');
+            for (let item of existing) {
+                if (item.textContent.replace('✕', '').trim() === tag) {
+                    input.value = '';
+                    return;
+                }
+            }
+            const tagEl = document.createElement('span');
+            tagEl.className = 'tag-item';
+            tagEl.innerHTML = `${tag} <span class="remove-tag" onclick="removeSliderTag(this)">✕</span>`;
+            container.appendChild(tagEl);
+            input.value = '';
+        }
+    }
+}
+
+function removeSliderTag(element) {
+    const tagItem = element.closest('.tag-item');
+    if (tagItem) tagItem.remove();
+}
+
+// ================================================================
+// ИЗБРАННОЕ
+// ================================================================
+
+function toggleFavoriteFromSlider() {
+    if (sliderRefs.length === 0 || sliderCurrentIndex < 0 || sliderCurrentIndex >= sliderRefs.length) {
+        return;
+    }
+    const ref = sliderRefs[sliderCurrentIndex];
+    toggleFavorite(ref.id);
+    renderSliderContent();
+    applyFilters();
+    renderReferences();
+    if (state.currentCollectionId) {
+        renderCollectionReferences();
+    }
+}
+
+// ================================================================
+// УДАЛЕНИЕ РЕФЕРЕНСА
+// ================================================================
+
+function deleteReferenceFromSlider() {
+    if (sliderRefs.length === 0 || sliderCurrentIndex < 0 || sliderCurrentIndex >= sliderRefs.length) {
+        return;
+    }
+    const ref = sliderRefs[sliderCurrentIndex];
+    if (!confirm(`Удалить "${ref.name}"?`)) return;
+    
+    deleteReference(ref.id);
+    
+    sliderRefs = sliderRefs.filter(r => r.id !== ref.id);
+    
+    if (sliderRefs.length === 0) {
+        closeSlider();
+        applyFilters();
+        renderReferences();
+        if (state.currentCollectionId) {
+            renderCollectionReferences();
+        }
+        renderCollections();
+        showNotification('Референс удалён');
+        return;
+    }
+    
+    if (sliderCurrentIndex >= sliderRefs.length) {
+        sliderCurrentIndex = sliderRefs.length - 1;
+    }
+    
+    renderSliderContent();
+    applyFilters();
+    renderReferences();
+    if (state.currentCollectionId) {
+        renderCollectionReferences();
+    }
+    renderCollections();
+    showNotification('Референс удалён');
+}
+
+// ================================================================
+// НАВИГАЦИЯ ПО СЛАЙДЕРУ
+// ================================================================
+
+function sliderPrev() {
+    if (sliderRefs.length === 0) return;
+    sliderCurrentIndex = (sliderCurrentIndex - 1 + sliderRefs.length) % sliderRefs.length;
+    sliderMenuOpen = false;
+    document.getElementById('sliderMenu').classList.remove('open');
+    renderSliderContent();
+}
+
+function sliderNext() {
+    if (sliderRefs.length === 0) return;
+    sliderCurrentIndex = (sliderCurrentIndex + 1) % sliderRefs.length;
+    sliderMenuOpen = false;
+    document.getElementById('sliderMenu').classList.remove('open');
+    renderSliderContent();
+}
+
+function toggleSliderMenu() {
+    const menu = document.getElementById('sliderMenu');
+    sliderMenuOpen = !sliderMenuOpen;
+    menu.classList.toggle('open');
+}
+
+// ================================================================
+// КЛАВИАТУРА И СВАЙПЫ ДЛЯ СЛАЙДЕРА
+// ================================================================
+
+document.addEventListener('keydown', function(e) {
+    const slider = document.getElementById('sliderOverlay');
+    if (!slider.classList.contains('show')) return;
+    
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        sliderPrev();
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        sliderNext();
+    } else if (e.key === 'Escape') {
+        closeSlider();
+    } else if (e.key === ' ') {
+        e.preventDefault();
+        toggleSliderMenu();
+    }
+});
+
+let touchStartXSlider = 0;
+let touchStartYSlider = 0;
+let touchEndXSlider = 0;
+let touchEndYSlider = 0;
+
+document.addEventListener('touchstart', function(e) {
+    const slider = document.getElementById('sliderOverlay');
+    if (!slider.classList.contains('show')) return;
+    touchStartXSlider = e.changedTouches[0].screenX;
+    touchStartYSlider = e.changedTouches[0].screenY;
+});
+
+document.addEventListener('touchend', function(e) {
+    const slider = document.getElementById('sliderOverlay');
+    if (!slider.classList.contains('show')) return;
+    touchEndXSlider = e.changedTouches[0].screenX;
+    touchEndYSlider = e.changedTouches[0].screenY;
+    handleSliderSwipe();
+});
+
+function handleSliderSwipe() {
+    const diffX = touchStartXSlider - touchEndXSlider;
+    const diffY = touchStartYSlider - touchEndYSlider;
+    const threshold = 50;
+    
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+        return;
+    }
+    
+    if (Math.abs(diffX) > threshold) {
+        if (diffX > 0) {
+            sliderNext();
+        } else {
+            sliderPrev();
+        }
+    }
+}
+
+// ================================================================
+// СВЯЗИ В СЛАЙДЕРЕ (добавление/удаление схем, оборудования, шпаргалок)
 // ================================================================
 
 function showAddSchemeToReference(refId) {
@@ -548,212 +827,10 @@ function removeCheatsheetFromReference(refId, cheatsheetId) {
 }
 
 // ================================================================
-// ОСТАЛЬНЫЕ ФУНКЦИИ СЛАЙДЕРА
-// ================================================================
-
-function toggleSliderMenu() {
-    const menu = document.getElementById('sliderMenu');
-    sliderMenuOpen = !sliderMenuOpen;
-    menu.classList.toggle('open');
-}
-
-function toggleSliderEdit() {
-    state.isDetailEdit = !state.isDetailEdit;
-    if (sliderRefs.length > 0 && sliderCurrentIndex < sliderRefs.length) {
-        const ref = sliderRefs[sliderCurrentIndex];
-        if (!state.isDetailEdit) {
-            saveSliderEdit(ref.id);
-        } else {
-            renderSliderContent();
-        }
-    }
-}
-
-function saveSliderEdit(refId) {
-    const ref = getReference(refId);
-    if (!ref) return;
-    
-    const description = document.getElementById('sliderDescription')?.value?.trim() || '';
-    const portraitType = document.getElementById('sliderPortraitType')?.value || ref.portraitType;
-    const colorType = document.getElementById('sliderColorType')?.value || ref.colorType;
-    const framing = document.getElementById('sliderFraming')?.value || ref.framing;
-    const pose = document.getElementById('sliderPose')?.value || ref.pose;
-    
-    const tagContainer = document.getElementById('sliderSelectedTags');
-    const tags = [];
-    if (tagContainer) {
-        tagContainer.querySelectorAll('.tag-item').forEach(item => {
-            const text = item.textContent.replace('✕', '').trim();
-            if (text) tags.push(text);
-        });
-    }
-    
-    updateReference(refId, {
-        description: description,
-        tags: tags,
-        portraitType: portraitType,
-        colorType: colorType,
-        framing: framing,
-        pose: pose
-    });
-    
-    state.isDetailEdit = false;
-    renderSliderContent();
-    applyFilters();
-    renderReferences();
-    showNotification('Референс обновлён!');
-}
-
-function addSliderTagFromInput(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        const input = document.getElementById('sliderTagInput');
-        const tag = input.value.trim();
-        if (tag) {
-            const container = document.getElementById('sliderSelectedTags');
-            const existing = container.querySelectorAll('.tag-item');
-            for (let item of existing) {
-                if (item.textContent.replace('✕', '').trim() === tag) {
-                    input.value = '';
-                    return;
-                }
-            }
-            const tagEl = document.createElement('span');
-            tagEl.className = 'tag-item';
-            tagEl.innerHTML = `${tag} <span class="remove-tag" onclick="removeSliderTag(this)">✕</span>`;
-            container.appendChild(tagEl);
-            input.value = '';
-        }
-    }
-}
-
-function removeSliderTag(element) {
-    const tagItem = element.closest('.tag-item');
-    if (tagItem) tagItem.remove();
-}
-
-function toggleFavoriteFromSlider() {
-    if (sliderRefs.length === 0 || sliderCurrentIndex < 0 || sliderCurrentIndex >= sliderRefs.length) {
-        return;
-    }
-    const ref = sliderRefs[sliderCurrentIndex];
-    toggleFavorite(ref.id);
-    renderSliderContent();
-    applyFilters();
-    renderReferences();
-}
-
-function deleteReferenceFromSlider() {
-    if (sliderRefs.length === 0 || sliderCurrentIndex < 0 || sliderCurrentIndex >= sliderRefs.length) {
-        return;
-    }
-    const ref = sliderRefs[sliderCurrentIndex];
-    if (!confirm(`Удалить "${ref.name}"?`)) return;
-    
-    deleteReference(ref.id);
-    
-    sliderRefs = sliderRefs.filter(r => r.id !== ref.id);
-    
-    if (sliderRefs.length === 0) {
-        closeSlider();
-        applyFilters();
-        renderReferences();
-        showNotification('Референс удалён');
-        return;
-    }
-    
-    if (sliderCurrentIndex >= sliderRefs.length) {
-        sliderCurrentIndex = sliderRefs.length - 1;
-    }
-    
-    renderSliderContent();
-    applyFilters();
-    renderReferences();
-    showNotification('Референс удалён');
-}
-
-function sliderPrev() {
-    if (sliderRefs.length === 0) return;
-    sliderCurrentIndex = (sliderCurrentIndex - 1 + sliderRefs.length) % sliderRefs.length;
-    sliderMenuOpen = false;
-    document.getElementById('sliderMenu').classList.remove('open');
-    renderSliderContent();
-}
-
-function sliderNext() {
-    if (sliderRefs.length === 0) return;
-    sliderCurrentIndex = (sliderCurrentIndex + 1) % sliderRefs.length;
-    sliderMenuOpen = false;
-    document.getElementById('sliderMenu').classList.remove('open');
-    renderSliderContent();
-}
-
-function closeSliderAndNavigate(page) {
-    closeSlider();
-    setTimeout(() => navigateTo(page), 300);
-}
-
-document.addEventListener('keydown', function(e) {
-    const slider = document.getElementById('sliderOverlay');
-    if (!slider.classList.contains('show')) return;
-    
-    if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        sliderPrev();
-    } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        sliderNext();
-    } else if (e.key === 'Escape') {
-        closeSlider();
-    } else if (e.key === ' ') {
-        e.preventDefault();
-        toggleSliderMenu();
-    }
-});
-
-let touchStartXSlider = 0;
-let touchStartYSlider = 0;
-let touchEndXSlider = 0;
-let touchEndYSlider = 0;
-
-document.addEventListener('touchstart', function(e) {
-    const slider = document.getElementById('sliderOverlay');
-    if (!slider.classList.contains('show')) return;
-    touchStartXSlider = e.changedTouches[0].screenX;
-    touchStartYSlider = e.changedTouches[0].screenY;
-});
-
-document.addEventListener('touchend', function(e) {
-    const slider = document.getElementById('sliderOverlay');
-    if (!slider.classList.contains('show')) return;
-    touchEndXSlider = e.changedTouches[0].screenX;
-    touchEndYSlider = e.changedTouches[0].screenY;
-    handleSliderSwipe();
-});
-
-function handleSliderSwipe() {
-    const diffX = touchStartXSlider - touchEndXSlider;
-    const diffY = touchStartYSlider - touchEndYSlider;
-    const threshold = 50;
-    
-    if (Math.abs(diffY) > Math.abs(diffX)) {
-        return;
-    }
-    
-    if (Math.abs(diffX) > threshold) {
-        if (diffX > 0) {
-            sliderNext();
-        } else {
-            sliderPrev();
-        }
-    }
-}
-
-// ================================================================
 // МОДАЛКА ДОБАВЛЕНИЯ РЕФЕРЕНСА
 // ================================================================
 
-function showAddReferenceModal() {
+function showAddReferenceModal(collectionId = null) {
     document.getElementById('referenceModalTitle').textContent = '➕ Новый референс';
     document.getElementById('editReferenceId').value = '';
     document.getElementById('refName').value = '';
@@ -764,12 +841,16 @@ function showAddReferenceModal() {
     document.getElementById('refSelectedTags').innerHTML = '';
     document.getElementById('refFavorite').checked = false;
     document.getElementById('refImageCompressed').value = '';
+    document.getElementById('refNSFW').checked = false;
     
-    // Сбрасываем новые поля
-    document.getElementById('refPortraitType').value = 'single';
-    document.getElementById('refColorType').value = 'color';
-    document.getElementById('refFraming').value = 'bust';
-    document.getElementById('refPose').value = 'standing';
+    // Если коллекция передана — выбираем её
+    if (collectionId) {
+        // Находим коллекцию в списке и выбираем
+        const select = document.getElementById('refCollection');
+        if (select) {
+            select.value = collectionId;
+        }
+    }
     
     renderRefCheckboxes();
     document.getElementById('referenceModal').classList.add('show');
@@ -778,6 +859,23 @@ function showAddReferenceModal() {
 function renderRefCheckboxes(refId = null) {
     const ref = refId ? getReference(refId) : null;
     
+    // Коллекции
+    const collectionContainer = document.getElementById('refCollectionContainer');
+    if (collectionContainer) {
+        if (state.collections.length === 0) {
+            collectionContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет коллекций. Сначала создайте коллекцию.</p>';
+        } else {
+            collectionContainer.innerHTML = `
+                <select id="refCollection" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
+                    ${state.collections.map(c => `
+                        <option value="${c.id}" ${ref && ref.collectionId === c.id ? 'selected' : ''}>📁 ${c.name}</option>
+                    `).join('')}
+                </select>
+            `;
+        }
+    }
+    
+    // Схемы
     const schemeContainer = document.getElementById('refSchemeCheckboxes');
     if (state.schemes.length === 0) {
         schemeContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет схем. Сначала создайте схему.</p>';
@@ -794,6 +892,7 @@ function renderRefCheckboxes(refId = null) {
         `;
     }
     
+    // Оборудование
     const equipmentContainer = document.getElementById('refEquipmentCheckboxes');
     if (state.equipment.length === 0) {
         equipmentContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет оборудования. Сначала добавьте оборудование.</p>';
@@ -810,6 +909,7 @@ function renderRefCheckboxes(refId = null) {
         `;
     }
     
+    // Шпаргалки
     const cheatsheetContainer = document.getElementById('refCheatsheetCheckboxes');
     if (state.cheatsheets.length === 0) {
         cheatsheetContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет шпаргалок. Сначала создайте шпаргалку.</p>';
@@ -845,15 +945,16 @@ function saveReference() {
     const name = document.getElementById('refName').value.trim();
     const description = document.getElementById('refDescription').value.trim();
     const isFavorite = document.getElementById('refFavorite').checked;
+    const isNSFW = document.getElementById('refNSFW').checked;
     const imageInput = document.getElementById('refImage');
     const compressedImage = document.getElementById('refImageCompressed')?.value || null;
     const tags = getRefTagsFromModal();
+    const collectionId = document.getElementById('refCollection')?.value || null;
     
-    // НОВЫЕ ПОЛЯ
-    const portraitType = document.getElementById('refPortraitType').value;
-    const colorType = document.getElementById('refColorType').value;
-    const framing = document.getElementById('refFraming').value;
-    const pose = document.getElementById('refPose').value;
+    const portraitType = document.getElementById('refPortraitType')?.value || 'single';
+    const colorType = document.getElementById('refColorType')?.value || 'color';
+    const framing = document.getElementById('refFraming')?.value || 'bust';
+    const pose = document.getElementById('refPose')?.value || 'standing';
     
     const schemeIds = [];
     document.querySelectorAll('#refSchemeCheckboxes input:checked').forEach(cb => {
@@ -875,35 +976,40 @@ function saveReference() {
         return;
     }
     
+    if (!collectionId) {
+        alert('❌ Выберите коллекцию');
+        return;
+    }
+    
     let image = null;
     
     if (compressedImage) {
         image = compressedImage;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
     } else if (imageInput.files && imageInput.files[0]) {
         compressImage(imageInput.files[0], 1200, 1200, function(compressedBase64) {
-            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
+            saveReferenceData(editId, name, description, compressedBase64, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
         });
     } else if (editId) {
         const existing = getReference(editId);
         image = existing ? existing.image : null;
-        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
+        saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
     } else {
-        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose);
+        saveReferenceData(editId, name, description, null, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId);
     }
 }
 
-function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, portraitType, colorType, framing, pose) {
+function saveReferenceData(editId, name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW, portraitType, colorType, framing, pose, collectionId) {
     if (editId) {
         updateReference(editId, {
-            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite,
-            portraitType, colorType, framing, pose
+            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW,
+            portraitType, colorType, framing, pose, collectionId
         });
         showNotification('Референс обновлён!');
     } else {
         addReference({
-            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite,
-            portraitType, colorType, framing, pose
+            name, description, image, tags, schemeIds, equipmentIds, cheatSheetIds, isFavorite, isNSFW,
+            portraitType, colorType, framing, pose, collectionId
         });
         showNotification('Референс добавлен!');
     }
@@ -913,6 +1019,10 @@ function saveReferenceData(editId, name, description, image, tags, schemeIds, eq
     renderSchemes();
     renderEquipment();
     renderCheatsheets();
+    if (state.currentCollectionId) {
+        renderCollectionReferences();
+    }
+    renderCollections();
 }
 
 function closeReferenceModal() {
