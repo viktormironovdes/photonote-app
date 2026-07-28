@@ -20,7 +20,7 @@
     ШАПКА
     ================================================================ -->
     <header class="app-header">
-        <h1 id="pageTitle">📸 Референсы</h1>
+        <h1 id="pageTitle">📁 Коллекции</h1>
         <div class="header-actions">
             <button id="headerBackBtn" style="display:none;" onclick="closeSlider()">← Назад</button>
             <button id="headerEditBtn" style="display:none;" onclick="toggleEditMode()">✏️</button>
@@ -31,82 +31,99 @@
     СТРАНИЦЫ
     ================================================================ -->
 
-    <!-- 1. РЕФЕРЕНСЫ (Главная) -->
-    <div class="page active" id="page-references">
+    <!-- 1. КОЛЛЕКЦИИ (Главная) -->
+    <div class="page active" id="page-collections">
         
-        <!-- НОВЫЕ ФИЛЬТРЫ ДЛЯ ПОРТРЕТОВ -->
-        <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;background:var(--bg-card);border-radius:var(--radius);padding:12px 16px;border:1px solid var(--border-color);">
-            <select id="filterPortraitType" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
-                <option value="all">👤 Все типы</option>
-                <option value="single">👤 Одиночный</option>
-                <option value="pair">👥 Парный</option>
-                <option value="group">👥 Групповой</option>
-            </select>
-            
-            <select id="filterColorType" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
-                <option value="all">🎨 Все</option>
-                <option value="color">🌈 Цветной</option>
-                <option value="bw">⚫ Чёрно-белый</option>
-            </select>
-            
-            <select id="filterFraming" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
-                <option value="all">📐 Все кадры</option>
-                <option value="head">👤 Голова</option>
-                <option value="bust">👤 Погрудный</option>
-                <option value="waist">👤 Поясной</option>
-                <option value="knee">👤 Поколенный</option>
-                <option value="full">👤 В полный рост</option>
-            </select>
-            
-            <select id="filterPose" onchange="applyFilters()" style="flex:1;min-width:100px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:13px;">
-                <option value="all">🧘 Все позы</option>
-                <option value="standing">🧍 Стоя</option>
-                <option value="sitting">🪑 Сидя</option>
-                <option value="lying">🛌 Лёжа</option>
-                <option value="moving">🏃 В движении</option>
-                <option value="mixed">🔄 Смешанная</option>
-            </select>
-        </div>
-        
+        <!-- Глобальный поиск -->
         <div class="filter-bar">
-            <input class="search-bar" id="referencesSearch" placeholder="🔍 Поиск по названию..." oninput="applyFilters()">
+            <input class="search-bar" id="referencesSearch" placeholder="🔍 Глобальный поиск по всем коллекциям..." oninput="applyFilters()">
             <div class="filter-tags" id="filterTagsContainer">
                 <div class="tag-input-wrapper">
                     <input id="tagInput" placeholder="➕ Введите тег..." onkeydown="addTagFromInput(event)">
                     <div class="selected-tags" id="selectedTags"></div>
                 </div>
             </div>
+            
+            <!-- Фильтры портретов -->
+            <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+                <select id="filterPortraitType" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="all">👤 Все типы</option>
+                    <option value="single">👤 Одиночный</option>
+                    <option value="pair">👥 Парный</option>
+                    <option value="group">👥 Групповой</option>
+                </select>
+                
+                <select id="filterColorType" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="all">🎨 Все</option>
+                    <option value="color">🌈 Цветной</option>
+                    <option value="bw">⚫ Ч/Б</option>
+                </select>
+                
+                <select id="filterFraming" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="all">📐 Все кадры</option>
+                    <option value="head">👤 Голова</option>
+                    <option value="bust">👤 Погрудный</option>
+                    <option value="waist">👤 Поясной</option>
+                    <option value="knee">👤 Поколенный</option>
+                    <option value="full">👤 В полный рост</option>
+                </select>
+                
+                <select id="filterPose" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="all">🧘 Все позы</option>
+                    <option value="standing">🧍 Стоя</option>
+                    <option value="sitting">🪑 Сидя</option>
+                    <option value="lying">🛌 Лёжа</option>
+                    <option value="moving">🏃 В движении</option>
+                    <option value="mixed">🔄 Смешанная</option>
+                </select>
+                
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);padding:4px 8px;">
+                    <input type="checkbox" id="filterNSFW" onchange="applyFilters()" style="width:16px;height:16px;accent-color:var(--accent-green);">
+                    🔞 NSFW
+                </label>
+            </div>
+            
             <div class="filter-actions">
-                <button class="btn btn-sm btn-outline" onclick="clearAllFilters()">✕ Очистить фильтры</button>
-                <button class="btn btn-sm btn-success" onclick="showAddReferenceModal()" style="width:auto;">➕ Добавить</button>
+                <button class="btn btn-sm btn-outline" onclick="clearAllFilters()" style="width:auto;">✕ Очистить всё</button>
+                <button class="btn btn-sm btn-success" onclick="showAddCollectionModal()" style="width:auto;">➕ Создать коллекцию</button>
                 <span id="filterCount" class="filter-count">0 референсов</span>
             </div>
         </div>
-        <div id="referencesGrid" class="references-grid"></div>
+        
+        <!-- Результаты глобального поиска -->
+        <div id="globalSearchResults"></div>
+        
+        <!-- Сетка коллекций -->
+        <div id="collectionsGrid" class="collections-grid"></div>
     </div>
 
-    <!-- 2. СХЕМЫ СВЕТА -->
+    <!-- 2. ДЕТАЛЬНАЯ СТРАНИЦА КОЛЛЕКЦИИ -->
+    <div class="page" id="page-collection-detail">
+        <div id="collectionDetailContent"></div>
+    </div>
+
+    <!-- 3. СХЕМЫ СВЕТА -->
     <div class="page" id="page-schemes">
         <input class="search-bar" id="schemesSearch" placeholder="🔍 Поиск по названию или тегам..." oninput="renderSchemes()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddSchemeModal()" style="margin-bottom:12px;">➕ Добавить схему</button>
         <div id="schemesList"></div>
     </div>
 
-    <!-- 3. ОБОРУДОВАНИЕ -->
+    <!-- 4. ОБОРУДОВАНИЕ -->
     <div class="page" id="page-equipment">
         <input class="search-bar" id="equipmentSearch" placeholder="🔍 Поиск по названию или характеристикам..." oninput="renderEquipment()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddEquipmentModal()" style="margin-bottom:12px;">➕ Добавить оборудование</button>
         <div id="equipmentList"></div>
     </div>
 
-    <!-- 4. ШПАРГАЛКИ -->
+    <!-- 5. ШПАРГАЛКИ -->
     <div class="page" id="page-cheatsheets">
         <input class="search-bar" id="cheatsheetsSearch" placeholder="🔍 Поиск по названию..." oninput="renderCheatsheets()" style="margin-bottom:12px;">
         <button class="btn" onclick="showAddCheatsheetModal()" style="margin-bottom:12px;">➕ Добавить шпаргалку</button>
         <div id="cheatsheetsList"></div>
     </div>
 
-    <!-- 5. ПРОФИЛЬ -->
+    <!-- 6. ПРОФИЛЬ -->
     <div class="page" id="page-profile">
         <div class="profile-avatar" id="profileAvatar" onclick="document.getElementById('avatarInput').click()">
             <span id="avatarLetter">Ф</span>
@@ -127,19 +144,23 @@
         <button class="btn" onclick="saveProfile()" style="margin-top:8px;">💾 Сохранить профиль</button>
         
         <div class="profile-item" style="margin-top:12px;">
+            <span class="label">📁 Коллекций</span>
+            <span class="value" id="totalCollections">0</span>
+        </div>
+        <div class="profile-item">
             <span class="label">📸 Всего референсов</span>
             <span class="value" id="totalReferences">0</span>
         </div>
         <div class="profile-item">
-            <span class="label">💡 Всего схем</span>
+            <span class="label">💡 Схем</span>
             <span class="value" id="totalSchemes">0</span>
         </div>
         <div class="profile-item">
-            <span class="label">📷 Всего оборудования</span>
+            <span class="label">📷 Оборудования</span>
             <span class="value" id="totalEquipment">0</span>
         </div>
         <div class="profile-item">
-            <span class="label">📋 Всего шпаргалок</span>
+            <span class="label">📋 Шпаргалок</span>
             <span class="value" id="totalCheatsheets">0</span>
         </div>
 
@@ -151,10 +172,7 @@
             
             <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">📤 Экспорт</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                <button class="btn btn-sm btn-success" onclick="exportReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
-                <button class="btn btn-sm btn-success" onclick="exportSchemes()" style="flex:1;min-width:80px;">💡 Схемы</button>
-                <button class="btn btn-sm btn-success" onclick="exportEquipment()" style="flex:1;min-width:80px;">📷 Оборудование</button>
-                <button class="btn btn-sm btn-success" onclick="exportCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+                <button class="btn btn-sm btn-success" onclick="exportAllData()" style="flex:1;min-width:80px;">💾 Все данные</button>
             </div>
             <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
                 📱 На телефоне открывается окно "Сохранить файл"
@@ -162,27 +180,14 @@
             
             <div style="font-weight:500;font-size:13px;color:#888;margin:12px 0 4px 0;">📥 Импорт</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importReferencesInput').click()" style="flex:1;min-width:80px;">📸 Референсы</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importSchemesInput').click()" style="flex:1;min-width:80px;">💡 Схемы</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importEquipmentInput').click()" style="flex:1;min-width:80px;">📷 Оборудование</button>
-                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importCheatsheetsInput').click()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importAllInput').click()" style="flex:1;min-width:80px;">💾 Все данные</button>
+                <button class="btn btn-sm btn-outline" onclick="document.getElementById('importCollectionInput').click()" style="flex:1;min-width:80px;">📁 Коллекцию</button>
             </div>
             
-            <input type="file" id="importReferencesInput" accept=".json" style="display:none" onchange="importReferences(event)">
-            <input type="file" id="importSchemesInput" accept=".json" style="display:none" onchange="importSchemes(event)">
-            <input type="file" id="importEquipmentInput" accept=".json" style="display:none" onchange="importEquipment(event)">
-            <input type="file" id="importCheatsheetsInput" accept=".json" style="display:none" onchange="importCheatsheets(event)">
-        </div>
-
-        <!-- ============================================================
-        ВСЕ ДАННЫЕ (бэкап)
-        ============================================================ -->
-        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
-            <div style="font-weight:600;margin-bottom:6px;">💾 Все данные (бэкап)</div>
-            <button class="btn btn-outline" onclick="exportAllData()" style="margin-top:2px;">📤 Экспорт всех данных</button>
-            <button class="btn btn-outline" onclick="document.getElementById('importAllInput').click()" style="margin-top:2px;">📥 Импорт всех данных</button>
             <input type="file" id="importAllInput" accept=".json" style="display:none" onchange="importAllData(event)">
-            <button class="btn btn-danger" onclick="if(confirm('Удалить ВСЕ данные?')){localStorage.clear();location.reload();}" style="margin-top:2px;">🗑 Сбросить все данные</button>
+            <input type="file" id="importCollectionInput" accept=".json" style="display:none" onchange="importCollection(event)">
+            
+            <button class="btn btn-danger" onclick="if(confirm('Удалить ВСЕ данные?')){localStorage.clear();location.reload();}" style="margin-top:6px;">🗑 Сбросить все данные</button>
         </div>
 
         <div class="debug-info" style="margin-top:16px;">
@@ -220,6 +225,32 @@
     МОДАЛЬНЫЕ ОКНА
     ================================================================ -->
 
+    <!-- Создание/редактирование коллекции -->
+    <div class="modal-overlay" id="collectionModal">
+        <div class="modal-content">
+            <h2 id="collectionModalTitle">📁 Новая коллекция</h2>
+            <div class="modal-scroll">
+                <input type="hidden" id="editCollectionId">
+
+                <label>📝 Название *</label>
+                <input id="collectionName" placeholder="Например: Портреты в студии">
+
+                <label>📖 Описание</label>
+                <textarea id="collectionDescription" placeholder="Описание коллекции..." rows="2"></textarea>
+
+                <label>🖼️ Обложка</label>
+                <input type="file" id="collectionCoverInput" accept="image/*" onchange="previewCollectionCover(event)">
+                <div id="collectionCoverPreview" style="margin: 8px 20px 0 20px; display:none;">
+                    <img id="collectionCoverPreviewImg" style="max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--border-color);">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeCollectionModal()">Отмена</button>
+                <button class="btn-save" onclick="saveCollection()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Добавление референса -->
     <div class="modal-overlay" id="referenceModal">
         <div class="modal-content">
@@ -246,7 +277,6 @@
                     <div class="selected-tags" id="refSelectedTags"></div>
                 </div>
 
-                <!-- НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ -->
                 <label>👤 Тип портрета</label>
                 <select id="refPortraitType" style="width:calc(100% - 40px);margin:3px 20px 0 20px;padding:10px 14px;border-radius:12px;border:1px solid var(--border-color);font-size:14px;background:var(--bg-input);color:var(--text-primary);">
                     <option value="single">👤 Одиночный</option>
@@ -277,6 +307,14 @@
                     <option value="moving">🏃 В движении</option>
                     <option value="mixed">🔄 Смешанная</option>
                 </select>
+
+                <label>🔞 NSFW</label>
+                <div style="padding: 0 20px;">
+                    <input type="checkbox" id="refNSFW"> ⚠️ Отметить как NSFW
+                </div>
+
+                <label>📁 Коллекция</label>
+                <div id="refCollectionContainer"></div>
 
                 <label>💡 Связанные схемы света</label>
                 <div id="refSchemeCheckboxes"></div>
@@ -402,7 +440,7 @@
     НИЖНЕЕ МЕНЮ
     ================================================================ -->
     <nav class="bottom-nav">
-        <button class="tab active" data-page="references"><span class="icon">📸</span>Референсы</button>
+        <button class="tab active" data-page="collections"><span class="icon">📁</span>Коллекции</button>
         <button class="tab" data-page="schemes"><span class="icon">💡</span>Схемы</button>
         <button class="tab" data-page="equipment"><span class="icon">📷</span>Оборудование</button>
         <button class="tab" data-page="cheatsheets"><span class="icon">📋</span>Шпаргалки</button>
@@ -417,6 +455,7 @@
     <script src="js/ui.js"></script>
     <script src="js/filters.js"></script>
     <script src="js/references.js"></script>
+    <script src="js/collections.js"></script>
     <script src="js/schemes.js"></script>
     <script src="js/equipment.js"></script>
     <script src="js/cheatsheets.js"></script>
