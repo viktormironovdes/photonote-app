@@ -3,6 +3,7 @@
 // ================================================================
 
 let state = {
+    collections: [],          // НОВОЕ: массив коллекций
     references: [],
     schemes: [],
     equipment: [],
@@ -12,7 +13,8 @@ let state = {
         email: '',
         avatar: null
     },
-    currentPage: 'references',
+    currentPage: 'collections',  // ИЗМЕНЕНО: теперь главная страница — коллекции
+    currentCollectionId: null,   // НОВОЕ: ID текущей открытой коллекции
     filteredReferences: [],
     selectedTags: [],
     searchQuery: '',
@@ -20,13 +22,14 @@ let state = {
     schemeCount: 0,
     equipmentCount: 0,
     cheatsheetCount: 0,
+    collectionCount: 0,          // НОВОЕ
     isDetailEdit: false,
-    // НОВЫЕ ФИЛЬТРЫ ДЛЯ ПОРТРЕТОВ
+    isNSFWEnabled: false,        // НОВОЕ: фильтр NSFW (по умолчанию выключен)
     filters: {
-        portraitType: 'all',      // 'single', 'pair', 'group', 'all'
-        colorType: 'all',         // 'bw', 'color', 'all'
-        framing: 'all',           // 'head', 'bust', 'waist', 'knee', 'full', 'all'
-        pose: 'all'               // 'standing', 'sitting', 'lying', 'moving', 'mixed', 'all'
+        portraitType: 'all',
+        colorType: 'all',
+        framing: 'all',
+        pose: 'all'
     }
 };
 
@@ -35,6 +38,7 @@ function loadState() {
         const raw = localStorage.getItem('photoCheatsheetState');
         if (raw) {
             const data = JSON.parse(raw);
+            state.collections = data.collections || [];
             state.references = data.references || [];
             state.schemes = data.schemes || [];
             state.equipment = data.equipment || [];
@@ -44,8 +48,9 @@ function loadState() {
                 email: '',
                 avatar: null
             };
+            state.isNSFWEnabled = data.isNSFWEnabled || false;
             
-            // Миграция: добавляем новые поля к старым референсам
+            // Миграция старых референсов
             state.references.forEach(r => {
                 if (!r.createdAt) r.createdAt = new Date().toISOString();
                 if (!r.tags) r.tags = [];
@@ -53,11 +58,38 @@ function loadState() {
                 if (!r.equipmentIds) r.equipmentIds = [];
                 if (!r.cheatSheetIds) r.cheatSheetIds = [];
                 if (r.isFavorite === undefined) r.isFavorite = false;
-                // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+                if (r.isNSFW === undefined) r.isNSFW = false;
                 if (!r.portraitType) r.portraitType = 'single';
                 if (!r.colorType) r.colorType = 'color';
                 if (!r.framing) r.framing = 'bust';
                 if (!r.pose) r.pose = 'standing';
+                // НОВОЕ: если у референса нет collectionId, создаём коллекцию "Основная"
+                if (!r.collectionId) {
+                    // Ищем коллекцию "Основная"
+                    let mainCollection = state.collections.find(c => c.name === 'Основная');
+                    if (!mainCollection) {
+                        mainCollection = {
+                            id: 'col_' + generateUUID(),
+                            name: 'Основная',
+                            coverImage: null,
+                            description: 'Все референсы',
+                            referenceIds: [],
+                            createdAt: new Date().toISOString()
+                        };
+                        state.collections.push(mainCollection);
+                    }
+                    r.collectionId = mainCollection.id;
+                    if (!mainCollection.referenceIds.includes(r.id)) {
+                        mainCollection.referenceIds.push(r.id);
+                    }
+                }
+            });
+            
+            // Синхронизируем referenceIds в коллекциях
+            state.collections.forEach(c => {
+                c.referenceIds = c.referenceIds || [];
+                // Удаляем несуществующие ID
+                c.referenceIds = c.referenceIds.filter(id => state.references.some(r => r.id === id));
             });
             
             // Загружаем фильтры если есть
@@ -66,6 +98,7 @@ function loadState() {
             }
             
             console.log('📊 Данные загружены:', {
+                collections: state.collections.length,
                 references: state.references.length,
                 schemes: state.schemes.length,
                 equipment: state.equipment.length,
@@ -84,12 +117,14 @@ function loadState() {
 
 function saveState() {
     const data = {
+        collections: state.collections,
         references: state.references,
         schemes: state.schemes,
         equipment: state.equipment,
         cheatsheets: state.cheatsheets,
         user: state.user,
-        filters: state.filters
+        filters: state.filters,
+        isNSFWEnabled: state.isNSFWEnabled
     };
     localStorage.setItem('photoCheatsheetState', JSON.stringify(data));
     updateCounts();
@@ -101,16 +136,19 @@ function updateCounts() {
     state.schemeCount = state.schemes.length;
     state.equipmentCount = state.equipment.length;
     state.cheatsheetCount = state.cheatsheets.length;
+    state.collectionCount = state.collections.length;
     
     const refEl = document.getElementById('totalReferences');
     const schEl = document.getElementById('totalSchemes');
     const eqEl = document.getElementById('totalEquipment');
     const chEl = document.getElementById('totalCheatsheets');
+    const colEl = document.getElementById('totalCollections');
     
     if (refEl) refEl.textContent = state.referenceCount;
     if (schEl) schEl.textContent = state.schemeCount;
     if (eqEl) eqEl.textContent = state.equipmentCount;
     if (chEl) chEl.textContent = state.cheatsheetCount;
+    if (colEl) colEl.textContent = state.collectionCount;
 }
 
 function updateStorageSize() {
@@ -122,12 +160,32 @@ function updateStorageSize() {
 }
 
 function initDemoData() {
+    // Создаём демо-коллекции
+    state.collections = [
+        {
+            id: 'col_1',
+            name: 'Портреты в студии',
+            coverImage: null,
+            description: 'Коллекция студийных портретов',
+            referenceIds: [],
+            createdAt: new Date().toISOString()
+        },
+        {
+            id: 'col_2',
+            name: 'Уличная съёмка',
+            coverImage: null,
+            description: 'Портреты на улице и в интерьерах',
+            referenceIds: [],
+            createdAt: new Date().toISOString()
+        }
+    ];
+    
     state.schemes = [
         {
             id: 'scheme_1',
             name: 'Рембрандт с октобоксом',
             image: null,
-            description: 'Октобокс под 45° сверху справа, отражатель слева снизу для заполнения теней',
+            description: 'Октобокс под 45° сверху справа, отражатель слева снизу',
             tags: ['#студийная', '#портрет', '#рембрандт'],
             createdAt: new Date().toISOString()
         },
@@ -135,7 +193,7 @@ function initDemoData() {
             id: 'scheme_2',
             name: 'Бабочка (муляж)',
             image: null,
-            description: 'Источник света прямо над объектом, чуть вперёд. Создаёт симметричные тени под носом',
+            description: 'Источник света прямо над объектом, чуть вперёд',
             tags: ['#студийная', '#портрет', '#бабочка'],
             createdAt: new Date().toISOString()
         },
@@ -181,7 +239,7 @@ function initDemoData() {
             id: 'cs_1',
             name: 'Правило 500 для астрофото',
             type: 'text',
-            content: 'Правило 500: максимальная выдержка = 500 / фокусное расстояние (мм)\nНапример: для 24мм → 500/24 ≈ 20 секунд',
+            content: 'Правило 500: максимальная выдержка = 500 / фокусное расстояние (мм)',
             image: null,
             createdAt: new Date().toISOString()
         },
@@ -189,13 +247,14 @@ function initDemoData() {
             id: 'cs_2',
             name: 'Соответствие ISO и выдержки',
             type: 'table',
-            content: 'ISO 100 → 1/100\nISO 200 → 1/200\nISO 400 → 1/400\nISO 800 → 1/800\nISO 1600 → 1/1600',
+            content: 'ISO 100 → 1/100\nISO 200 → 1/200\nISO 400 → 1/400',
             image: null,
             createdAt: new Date().toISOString()
         }
     ];
     
-    state.references = [
+    // Создаём демо-референсы с привязкой к коллекциям
+    const refs = [
         {
             id: 'ref_1',
             image: null,
@@ -206,11 +265,13 @@ function initDemoData() {
             equipmentIds: ['eq_1', 'eq_2', 'eq_3'],
             cheatSheetIds: [],
             isFavorite: true,
-            createdAt: new Date().toISOString(),
+            isNSFW: false,
             portraitType: 'single',
             colorType: 'color',
             framing: 'bust',
-            pose: 'standing'
+            pose: 'standing',
+            collectionId: 'col_1',
+            createdAt: new Date().toISOString()
         },
         {
             id: 'ref_2',
@@ -222,11 +283,13 @@ function initDemoData() {
             equipmentIds: ['eq_3'],
             cheatSheetIds: [],
             isFavorite: false,
-            createdAt: new Date().toISOString(),
+            isNSFW: false,
             portraitType: 'single',
             colorType: 'color',
             framing: 'full',
-            pose: 'standing'
+            pose: 'standing',
+            collectionId: 'col_1',
+            createdAt: new Date().toISOString()
         },
         {
             id: 'ref_3',
@@ -238,16 +301,88 @@ function initDemoData() {
             equipmentIds: ['eq_1', 'eq_2'],
             cheatSheetIds: ['cs_1'],
             isFavorite: false,
-            createdAt: new Date().toISOString(),
+            isNSFW: false,
             portraitType: 'single',
             colorType: 'bw',
             framing: 'waist',
-            pose: 'sitting'
+            pose: 'sitting',
+            collectionId: 'col_2',
+            createdAt: new Date().toISOString()
         }
     ];
     
+    state.references = refs;
+    
+    // Заполняем referenceIds в коллекциях
+    state.collections.forEach(c => {
+        c.referenceIds = state.references
+            .filter(r => r.collectionId === c.id)
+            .map(r => r.id);
+    });
+    
     saveState();
 }
+
+// ================================================================
+// CRUD ДЛЯ КОЛЛЕКЦИЙ
+// ================================================================
+
+function getCollection(id) {
+    return state.collections.find(c => c.id === id);
+}
+
+function getCollections() {
+    return state.collections;
+}
+
+function getReferencesByCollection(collectionId) {
+    return state.references.filter(r => r.collectionId === collectionId);
+}
+
+function addCollection(name, description = '', coverImage = null) {
+    const collection = {
+        id: 'col_' + generateUUID(),
+        name: name || 'Новая коллекция',
+        coverImage: coverImage,
+        description: description,
+        referenceIds: [],
+        createdAt: new Date().toISOString()
+    };
+    state.collections.push(collection);
+    saveState();
+    return collection;
+}
+
+function updateCollection(id, data) {
+    const collection = getCollection(id);
+    if (!collection) return null;
+    
+    if (data.name !== undefined) collection.name = data.name;
+    if (data.description !== undefined) collection.description = data.description;
+    if (data.coverImage !== undefined) collection.coverImage = data.coverImage;
+    
+    saveState();
+    return collection;
+}
+
+function deleteCollection(id) {
+    const collection = getCollection(id);
+    if (!collection) return;
+    
+    // Удаляем все референсы в этой коллекции
+    const refsToDelete = state.references.filter(r => r.collectionId === id);
+    refsToDelete.forEach(r => {
+        state.references = state.references.filter(ref => ref.id !== r.id);
+    });
+    
+    // Удаляем коллекцию
+    state.collections = state.collections.filter(c => c.id !== id);
+    saveState();
+}
+
+// ================================================================
+// CRUD ДЛЯ РЕФЕРЕНСОВ (обновлённый)
+// ================================================================
 
 function getReference(id) {
     return state.references.find(r => r.id === id);
@@ -264,14 +399,24 @@ function addReference(data) {
         equipmentIds: data.equipmentIds || [],
         cheatSheetIds: data.cheatSheetIds || [],
         isFavorite: data.isFavorite || false,
-        createdAt: new Date().toISOString(),
-        // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+        isNSFW: data.isNSFW || false,
         portraitType: data.portraitType || 'single',
         colorType: data.colorType || 'color',
         framing: data.framing || 'bust',
-        pose: data.pose || 'standing'
+        pose: data.pose || 'standing',
+        collectionId: data.collectionId || null,
+        createdAt: new Date().toISOString()
     };
     state.references.push(ref);
+    
+    // Добавляем ID в коллекцию
+    if (ref.collectionId) {
+        const collection = getCollection(ref.collectionId);
+        if (collection && !collection.referenceIds.includes(ref.id)) {
+            collection.referenceIds.push(ref.id);
+        }
+    }
+    
     saveState();
     return ref;
 }
@@ -279,6 +424,21 @@ function addReference(data) {
 function updateReference(id, data) {
     const ref = getReference(id);
     if (!ref) return null;
+    
+    // Если меняется коллекция — обновляем referenceIds
+    if (data.collectionId !== undefined && data.collectionId !== ref.collectionId) {
+        // Удаляем из старой коллекции
+        const oldCollection = getCollection(ref.collectionId);
+        if (oldCollection) {
+            oldCollection.referenceIds = oldCollection.referenceIds.filter(rid => rid !== id);
+        }
+        // Добавляем в новую коллекцию
+        const newCollection = getCollection(data.collectionId);
+        if (newCollection && !newCollection.referenceIds.includes(id)) {
+            newCollection.referenceIds.push(id);
+        }
+        ref.collectionId = data.collectionId;
+    }
     
     if (data.image !== undefined) ref.image = data.image;
     if (data.name !== undefined) ref.name = data.name;
@@ -288,7 +448,7 @@ function updateReference(id, data) {
     if (data.equipmentIds !== undefined) ref.equipmentIds = data.equipmentIds;
     if (data.cheatSheetIds !== undefined) ref.cheatSheetIds = data.cheatSheetIds;
     if (data.isFavorite !== undefined) ref.isFavorite = data.isFavorite;
-    // НОВЫЕ ПОЛЯ ДЛЯ ПОРТРЕТОВ
+    if (data.isNSFW !== undefined) ref.isNSFW = data.isNSFW;
     if (data.portraitType !== undefined) ref.portraitType = data.portraitType;
     if (data.colorType !== undefined) ref.colorType = data.colorType;
     if (data.framing !== undefined) ref.framing = data.framing;
@@ -299,8 +459,73 @@ function updateReference(id, data) {
 }
 
 function deleteReference(id) {
+    const ref = getReference(id);
+    if (!ref) return;
+    
+    // Удаляем из коллекции
+    const collection = getCollection(ref.collectionId);
+    if (collection) {
+        collection.referenceIds = collection.referenceIds.filter(rid => rid !== id);
+    }
+    
     state.references = state.references.filter(r => r.id !== id);
     saveState();
+}
+
+function copyReferenceToCollection(refId, targetCollectionId) {
+    const ref = getReference(refId);
+    if (!ref) return null;
+    
+    const targetCollection = getCollection(targetCollectionId);
+    if (!targetCollection) return null;
+    
+    // Создаём КОПИЮ референса (новый ID)
+    const newRef = {
+        ...ref,
+        id: 'ref_' + generateUUID(),
+        collectionId: targetCollectionId,
+        createdAt: new Date().toISOString(),
+        isFavorite: false // копия не наследует избранное
+    };
+    
+    state.references.push(newRef);
+    targetCollection.referenceIds.push(newRef.id);
+    
+    saveState();
+    return newRef;
+}
+
+function moveReferenceToCollection(refId, targetCollectionId) {
+    const ref = getReference(refId);
+    if (!ref) return null;
+    
+    const targetCollection = getCollection(targetCollectionId);
+    if (!targetCollection) return null;
+    
+    // Удаляем из старой коллекции
+    const oldCollection = getCollection(ref.collectionId);
+    if (oldCollection) {
+        oldCollection.referenceIds = oldCollection.referenceIds.filter(rid => rid !== refId);
+    }
+    
+    // Добавляем в новую
+    ref.collectionId = targetCollectionId;
+    if (!targetCollection.referenceIds.includes(refId)) {
+        targetCollection.referenceIds.push(refId);
+    }
+    
+    saveState();
+    return ref;
+}
+
+function toggleNSFW(id) {
+    const ref = getReference(id);
+    if (ref) {
+        ref.isNSFW = !ref.isNSFW;
+        saveState();
+        return ref.isNSFW;
+    }
+    return false;
 }
 
 function toggleFavorite(id) {
@@ -312,6 +537,10 @@ function toggleFavorite(id) {
     }
     return false;
 }
+
+// ================================================================
+// ОСТАЛЬНЫЕ ФУНКЦИИ (без изменений)
+// ================================================================
 
 function getScheme(id) {
     return state.schemes.find(s => s.id === id);
@@ -468,6 +697,7 @@ function exportAllDataJSON() {
     return JSON.stringify({
         version: '1.0',
         exportedAt: new Date().toISOString(),
+        collections: state.collections,
         references: state.references,
         schemes: state.schemes,
         equipment: state.equipment,
@@ -483,6 +713,7 @@ function importAllData(jsonData) {
             throw new Error('Неверный формат данных');
         }
         
+        state.collections = data.collections || [];
         state.references = data.references || [];
         state.schemes = data.schemes || [];
         state.equipment = data.equipment || [];
@@ -499,6 +730,32 @@ function importAllData(jsonData) {
             if (!r.colorType) r.colorType = 'color';
             if (!r.framing) r.framing = 'bust';
             if (!r.pose) r.pose = 'standing';
+            if (r.isNSFW === undefined) r.isNSFW = false;
+            if (!r.collectionId) {
+                // Если нет коллекции — создаём "Основная"
+                let mainCollection = state.collections.find(c => c.name === 'Основная');
+                if (!mainCollection) {
+                    mainCollection = {
+                        id: 'col_' + generateUUID(),
+                        name: 'Основная',
+                        coverImage: null,
+                        description: 'Все референсы',
+                        referenceIds: [],
+                        createdAt: new Date().toISOString()
+                    };
+                    state.collections.push(mainCollection);
+                }
+                r.collectionId = mainCollection.id;
+                if (!mainCollection.referenceIds.includes(r.id)) {
+                    mainCollection.referenceIds.push(r.id);
+                }
+            }
+        });
+        
+        // Синхронизируем referenceIds
+        state.collections.forEach(c => {
+            c.referenceIds = c.referenceIds || [];
+            c.referenceIds = c.referenceIds.filter(id => state.references.some(r => r.id === id));
         });
         
         saveState();
