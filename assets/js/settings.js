@@ -2,19 +2,6 @@
 // ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ
 // ================================================================
 
-// Проверяем, доступен ли Capacitor Filesystem
-let CapacitorFilesystem = null;
-try {
-    // Пробуем получить Capacitor из глобального объекта
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        // Для Capacitor 6+ Filesystem доступен через import
-        // Но в нашем случае мы будем использовать глобальный объект
-        console.log('✅ Capacitor native platform detected');
-    }
-} catch (e) {
-    console.log('⚠️ Capacitor not available');
-}
-
 function loadProfile() {
     const nameInput = document.getElementById('profileNameInput');
     const emailInput = document.getElementById('profileEmailInput');
@@ -101,7 +88,7 @@ function exportReferences() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileNative(jsonString, `references_${getTodayStr()}.json`, '📸 Референсы');
+    saveFileWithSharer(jsonString, `references_${getTodayStr()}.json`, '📸 Референсы');
 }
 
 function exportSchemes() {
@@ -119,7 +106,7 @@ function exportSchemes() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileNative(jsonString, `schemes_${getTodayStr()}.json`, '💡 Схемы света');
+    saveFileWithSharer(jsonString, `schemes_${getTodayStr()}.json`, '💡 Схемы света');
 }
 
 function exportEquipment() {
@@ -137,7 +124,7 @@ function exportEquipment() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileNative(jsonString, `equipment_${getTodayStr()}.json`, '📷 Оборудование');
+    saveFileWithSharer(jsonString, `equipment_${getTodayStr()}.json`, '📷 Оборудование');
 }
 
 function exportCheatsheets() {
@@ -155,12 +142,8 @@ function exportCheatsheets() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileNative(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Шпаргалки');
+    saveFileWithSharer(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Шпаргалки');
 }
-
-// ================================================================
-// ЭКСПОРТ ВСЕХ ДАННЫХ
-// ================================================================
 
 function exportAllData() {
     const data = {
@@ -175,81 +158,79 @@ function exportAllData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileNative(jsonString, `all_data_${getTodayStr()}.json`, '💾 Все данные');
+    saveFileWithSharer(jsonString, `all_data_${getTodayStr()}.json`, '💾 Все данные');
 }
 
 // ================================================================
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ СОХРАНЕНИЯ ФАЙЛА
+// СОХРАНЕНИЕ ФАЙЛА ЧЕРЕЗ @capgo/capacitor-file-sharer
 // ================================================================
 
-function saveFileNative(jsonString, filename, title) {
-    // Пробуем использовать Capacitor Filesystem (для Android APK)
+function saveFileWithSharer(jsonString, filename, title) {
+    // Пробуем использовать Capacitor File Sharer (для Android APK)
     if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        saveFileCapacitor(jsonString, filename, title);
+        try {
+            // Проверяем доступность плагина
+            if (window.Capacitor.Plugins && window.Capacitor.Plugins.FileSharer) {
+                const FileSharer = window.Capacitor.Plugins.FileSharer;
+                
+                // Конвертируем строку в Base64
+                const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
+                
+                FileSharer.share({
+                    filename: filename,
+                    base64Data: base64Data,
+                    contentType: 'application/json'
+                }).then(() => {
+                    showNotification(`✅ Файл "${filename}" сохранён!`, 'success');
+                }).catch((err) => {
+                    console.error('❌ Ошибка FileSharer:', err);
+                    // Если плагин не сработал — запасной вариант
+                    fallbackSave(jsonString, filename);
+                });
+            } else {
+                console.log('⚠️ FileSharer плагин не найден, используем запасной вариант');
+                fallbackSave(jsonString, filename);
+            }
+        } catch (e) {
+            console.error('❌ Ошибка при вызове FileSharer:', e);
+            fallbackSave(jsonString, filename);
+        }
     } else {
-        // Запасной вариант для браузера
-        downloadJsonString(jsonString, filename);
+        // Для браузера — загрузка через ссылку
+        fallbackSave(jsonString, filename);
     }
 }
 
 // ================================================================
-// СОХРАНЕНИЕ ЧЕРЕЗ CAPACITOR FILESYSTEM (Android)
+// ЗАПАСНОЙ ВАРИАНТ (для браузера или если плагин не работает)
 // ================================================================
 
-function saveFileCapacitor(jsonString, filename, title) {
-    // Показываем уведомление о начале сохранения
-    showNotification(`💾 Сохранение "${filename}"...`, 'info');
-    
-    // Используем Capacitor Filesystem через глобальный объект
-    // (плагин должен быть установлен и синхронизирован)
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+function fallbackSave(jsonString, filename) {
+    // Пробуем через Capacitor Filesystem (если есть)
+    if (window.Capacitor && window.Capacitor.isNativePlatform() && 
+        window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
+        
         const Filesystem = window.Capacitor.Plugins.Filesystem;
         
-        // Запрашиваем разрешение на запись (для Android 13+)
-        Filesystem.requestPermissions().then((result) => {
-            if (result.permissions.storage === 'granted' || result.permissions.storage === 'prompt') {
-                // Сохраняем файл в папку Documents
-                Filesystem.writeFile({
-                    path: filename,
-                    data: jsonString,
-                    directory: 'DOCUMENTS',
-                    encoding: 'utf8'
-                }).then(() => {
-                    showNotification(`✅ Файл "${filename}" сохранён в Документы!`, 'success');
-                }).catch((err) => {
-                    console.error('❌ Ошибка сохранения:', err);
-                    // Если не получилось в Documents, пробуем в Download
-                    Filesystem.writeFile({
-                        path: filename,
-                        data: jsonString,
-                        directory: 'DOWNLOAD',
-                        encoding: 'utf8'
-                    }).then(() => {
-                        showNotification(`✅ Файл "${filename}" сохранён в Загрузки!`, 'success');
-                    }).catch((err2) => {
-                        console.error('❌ Ошибка сохранения в Download:', err2);
-                        // Если всё失败了 — скачиваем через браузер
-                        downloadJsonString(jsonString, filename);
-                    });
-                });
-            } else {
-                // Нет разрешения — скачиваем через браузер
-                showNotification('⚠️ Нет разрешения на запись, файл скачан', 'warning');
-                downloadJsonString(jsonString, filename);
-            }
+        Filesystem.writeFile({
+            path: filename,
+            data: jsonString,
+            directory: 'DOCUMENTS',
+            encoding: 'utf8'
+        }).then(() => {
+            showNotification(`✅ Файл "${filename}" сохранён в Документы!`, 'success');
         }).catch(() => {
-            // Если requestPermissions не сработал — скачиваем через браузер
+            // Если не получилось — скачиваем через браузер
             downloadJsonString(jsonString, filename);
         });
     } else {
-        // Если Capacitor Filesystem не доступен — скачиваем через браузер
-        console.log('⚠️ Capacitor Filesystem не найден, используем браузерную загрузку');
+        // Браузерная загрузка
         downloadJsonString(jsonString, filename);
     }
 }
 
 // ================================================================
-// БРАУЗЕРНАЯ ЗАГРУЗКА (запасной вариант)
+// БРАУЗЕРНАЯ ЗАГРУЗКА (самый надёжный запасной вариант)
 // ================================================================
 
 function downloadJsonString(jsonString, filename) {
