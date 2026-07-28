@@ -1,9 +1,10 @@
 // ================================================================
 // УПРАВЛЕНИЕ ДАННЫМИ (LOCALSTORAGE)
+// Версия 0.1.1 — EXIF-метаданные
 // ================================================================
 
 let state = {
-    collections: [],          // НОВОЕ: массив коллекций
+    collections: [],
     references: [],
     schemes: [],
     equipment: [],
@@ -13,8 +14,8 @@ let state = {
         email: '',
         avatar: null
     },
-    currentPage: 'collections',  // ИЗМЕНЕНО: теперь главная страница — коллекции
-    currentCollectionId: null,   // НОВОЕ: ID текущей открытой коллекции
+    currentPage: 'collections',
+    currentCollectionId: null,
     filteredReferences: [],
     selectedTags: [],
     searchQuery: '',
@@ -22,9 +23,9 @@ let state = {
     schemeCount: 0,
     equipmentCount: 0,
     cheatsheetCount: 0,
-    collectionCount: 0,          // НОВОЕ
+    collectionCount: 0,
     isDetailEdit: false,
-    isNSFWEnabled: false,        // НОВОЕ: фильтр NSFW (по умолчанию выключен)
+    isNSFWEnabled: false,
     filters: {
         portraitType: 'all',
         colorType: 'all',
@@ -63,9 +64,10 @@ function loadState() {
                 if (!r.colorType) r.colorType = 'color';
                 if (!r.framing) r.framing = 'bust';
                 if (!r.pose) r.pose = 'standing';
+                // НОВОЕ: поле EXIF
+                if (r.exif === undefined) r.exif = null;
                 // НОВОЕ: если у референса нет collectionId, создаём коллекцию "Основная"
                 if (!r.collectionId) {
-                    // Ищем коллекцию "Основная"
                     let mainCollection = state.collections.find(c => c.name === 'Основная');
                     if (!mainCollection) {
                         mainCollection = {
@@ -88,7 +90,6 @@ function loadState() {
             // Синхронизируем referenceIds в коллекциях
             state.collections.forEach(c => {
                 c.referenceIds = c.referenceIds || [];
-                // Удаляем несуществующие ID
                 c.referenceIds = c.referenceIds.filter(id => state.references.some(r => r.id === id));
             });
             
@@ -253,7 +254,7 @@ function initDemoData() {
         }
     ];
     
-    // Создаём демо-референсы с привязкой к коллекциям
+    // Создаём демо-референсы с привязкой к коллекциям и EXIF
     const refs = [
         {
             id: 'ref_1',
@@ -271,6 +272,16 @@ function initDemoData() {
             framing: 'bust',
             pose: 'standing',
             collectionId: 'col_1',
+            exif: {
+                camera: 'Sony A7IV',
+                lens: 'Sony 85mm f/1.4 GM',
+                focalLength: '85mm',
+                aperture: 'f/2.8',
+                exposureTime: '1/125',
+                iso: '100',
+                dateTime: '2026-07-28 14:30:00',
+                flash: false
+            },
             createdAt: new Date().toISOString()
         },
         {
@@ -289,6 +300,7 @@ function initDemoData() {
             framing: 'full',
             pose: 'standing',
             collectionId: 'col_1',
+            exif: null,
             createdAt: new Date().toISOString()
         },
         {
@@ -307,6 +319,16 @@ function initDemoData() {
             framing: 'waist',
             pose: 'sitting',
             collectionId: 'col_2',
+            exif: {
+                camera: 'Canon EOS R5',
+                lens: '',
+                focalLength: '50mm',
+                aperture: 'f/1.8',
+                exposureTime: '1/250',
+                iso: '400',
+                dateTime: '2026-07-27 16:45:00',
+                flash: false
+            },
             createdAt: new Date().toISOString()
         }
     ];
@@ -381,7 +403,7 @@ function deleteCollection(id) {
 }
 
 // ================================================================
-// CRUD ДЛЯ РЕФЕРЕНСОВ (обновлённый)
+// CRUD ДЛЯ РЕФЕРЕНСОВ
 // ================================================================
 
 function getReference(id) {
@@ -405,6 +427,7 @@ function addReference(data) {
         framing: data.framing || 'bust',
         pose: data.pose || 'standing',
         collectionId: data.collectionId || null,
+        exif: data.exif || null,  // НОВОЕ: EXIF-данные
         createdAt: new Date().toISOString()
     };
     state.references.push(ref);
@@ -453,6 +476,7 @@ function updateReference(id, data) {
     if (data.colorType !== undefined) ref.colorType = data.colorType;
     if (data.framing !== undefined) ref.framing = data.framing;
     if (data.pose !== undefined) ref.pose = data.pose;
+    if (data.exif !== undefined) ref.exif = data.exif;  // НОВОЕ
     
     saveState();
     return ref;
@@ -731,8 +755,8 @@ function importAllData(jsonData) {
             if (!r.framing) r.framing = 'bust';
             if (!r.pose) r.pose = 'standing';
             if (r.isNSFW === undefined) r.isNSFW = false;
+            if (r.exif === undefined) r.exif = null;
             if (!r.collectionId) {
-                // Если нет коллекции — создаём "Основная"
                 let mainCollection = state.collections.find(c => c.name === 'Основная');
                 if (!mainCollection) {
                     mainCollection = {
