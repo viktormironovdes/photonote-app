@@ -1,6 +1,7 @@
 /* ================================================================
    ФОТО-ШПАРГАЛКА - ПОЛНЫЙ СТИЛЬ
    Тёмная тема · Адаптивность · Минимализм
+   Версия 0.1.0 — Коллекции
    ================================================================ */
 
 /* ================================================================
@@ -21,6 +22,7 @@
     --accent-green-light: #5aaa5a;
     --accent-red: #8a3a3a;
     --accent-red-light: #cc5555;
+    --accent-gold: #c8a030;
     --shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
     --radius: 16px;
     --radius-sm: 10px;
@@ -50,6 +52,9 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* ================================================================
+   2. СКРОЛЛБАРЫ
+   ================================================================ */
 ::-webkit-scrollbar {
     width: 4px;
     height: 4px;
@@ -66,7 +71,7 @@ body {
 }
 
 /* ================================================================
-   ШАПКА
+   3. ШАПКА (HEADER)
    ================================================================ */
 .app-header {
     position: sticky;
@@ -112,20 +117,23 @@ body {
     background: var(--bg-hover);
     color: var(--text-primary);
 }
+
 .app-header .header-actions button:active {
     transform: scale(0.92);
 }
+
 .app-header .header-actions #headerBackBtn {
     font-size: 15px;
     font-weight: 600;
     color: var(--text-secondary);
 }
+
 .app-header .header-actions #headerBackBtn:hover {
     color: var(--text-primary);
 }
 
 /* ================================================================
-   СТРАНИЦЫ
+   4. СТРАНИЦЫ (PAGES)
    ================================================================ */
 .page {
     display: none;
@@ -134,17 +142,30 @@ body {
     margin: 0 auto;
     animation: fadeIn 0.3s ease;
 }
+
 .page.active {
     display: block;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#page-collection-detail {
+    padding: 0 16px 80px 16px;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 /* ================================================================
-   ФИЛЬТРЫ
+   5. ФИЛЬТРЫ И ПОИСК
    ================================================================ */
 .filter-bar {
     background: var(--bg-card);
@@ -165,10 +186,12 @@ body {
     outline: none;
     transition: var(--transition);
 }
+
 .search-bar:focus {
     border-color: var(--border-hover);
     background: #222;
 }
+
 .search-bar::placeholder {
     color: var(--text-muted);
 }
@@ -176,6 +199,7 @@ body {
 .filter-tags {
     margin-top: 10px;
 }
+
 .tag-input-wrapper {
     display: flex;
     flex-wrap: wrap;
@@ -188,9 +212,11 @@ body {
     min-height: 44px;
     transition: var(--transition);
 }
+
 .tag-input-wrapper:focus-within {
     border-color: var(--border-hover);
 }
+
 .tag-input-wrapper input {
     flex: 1;
     min-width: 80px;
@@ -201,6 +227,7 @@ body {
     outline: none;
     padding: 4px 0;
 }
+
 .tag-input-wrapper input::placeholder {
     color: var(--text-muted);
 }
@@ -210,6 +237,7 @@ body {
     flex-wrap: wrap;
     gap: 5px;
 }
+
 .tag-item {
     display: inline-flex;
     align-items: center;
@@ -222,10 +250,18 @@ body {
     border: 1px solid var(--border-color);
     animation: tagPop 0.2s ease;
 }
+
 @keyframes tagPop {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
+
 .tag-item .remove-tag {
     cursor: pointer;
     color: var(--text-muted);
@@ -234,8 +270,37 @@ body {
     padding: 0 2px;
     transition: var(--transition);
 }
+
 .tag-item .remove-tag:hover {
     color: var(--accent-red-light);
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.filter-row select {
+    flex: 1;
+    min-width: 80px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 12px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+.filter-row select:focus {
+    border-color: var(--border-hover);
+    outline: none;
 }
 
 .filter-actions {
@@ -246,13 +311,115 @@ body {
     gap: 8px;
     flex-wrap: wrap;
 }
+
 .filter-count {
     font-size: 13px;
     color: var(--text-muted);
 }
 
 /* ================================================================
-   СЕТКА РЕФЕРЕНСОВ
+   6. СЕТКА КОЛЛЕКЦИЙ
+   ================================================================ */
+.collections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.collection-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+}
+
+.collection-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow);
+}
+
+.collection-card:active {
+    transform: scale(0.97);
+}
+
+.collection-cover {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.collection-cover-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: var(--text-muted);
+    background: var(--bg-input);
+}
+
+.collection-cover-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 14px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7) 60%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 80px;
+}
+
+.collection-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    line-height: 1.3;
+}
+
+.collection-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    margin-top: 2px;
+}
+
+.collection-meta .nsfw-badge {
+    background: rgba(200,50,50,0.85);
+    padding: 0 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    color: #fff;
+}
+
+.collection-actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    justify-content: flex-end;
+}
+
+.collection-actions .btn-sm {
+    font-size: 12px;
+    padding: 4px 10px;
+}
+
+/* ================================================================
+   7. СЕТКА РЕФЕРЕНСОВ
    ================================================================ */
 .references-grid {
     display: grid;
@@ -269,14 +436,17 @@ body {
     transition: var(--transition);
     position: relative;
 }
+
 .reference-card:hover {
     transform: translateY(-3px);
     border-color: var(--border-hover);
     box-shadow: var(--shadow);
 }
+
 .reference-card:active {
     transform: scale(0.97);
 }
+
 .reference-card .image-wrapper {
     width: 100%;
     aspect-ratio: 3 / 2;
@@ -284,6 +454,7 @@ body {
     background: var(--bg-secondary);
     position: relative;
 }
+
 .reference-card .image-wrapper img {
     width: 100%;
     height: 100%;
@@ -291,9 +462,11 @@ body {
     display: block;
     transition: var(--transition);
 }
+
 .reference-card:hover .image-wrapper img {
     transform: scale(1.03);
 }
+
 .reference-card .image-wrapper .no-photo {
     width: 100%;
     height: 100%;
@@ -303,6 +476,7 @@ body {
     font-size: 48px;
     color: var(--text-muted);
 }
+
 .reference-card .favorite-badge {
     position: absolute;
     top: 8px;
@@ -311,9 +485,11 @@ body {
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
     pointer-events: none;
 }
+
 .reference-card .info {
     padding: 10px 12px 12px 12px;
 }
+
 .reference-card .info .title {
     font-weight: 600;
     font-size: 14px;
@@ -322,12 +498,14 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .reference-card .info .tags {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 4px;
 }
+
 .reference-card .info .tags .tag {
     font-size: 10px;
     background: var(--bg-hover);
@@ -336,21 +514,27 @@ body {
     color: var(--text-muted);
     border: 1px solid var(--border-color);
 }
+
 .reference-card .info .meta {
     display: flex;
-    gap: 10px;
-    margin-top: 6px;
-    font-size: 11px;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 10px;
     color: var(--text-muted);
+    flex-wrap: wrap;
 }
+
 .reference-card .info .meta span {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
+    background: var(--bg-input);
+    padding: 1px 6px;
+    border-radius: 8px;
 }
 
 /* ================================================================
-   КНОПКИ
+   8. КНОПКИ
    ================================================================ */
 .btn {
     display: inline-block;
@@ -368,38 +552,47 @@ body {
     margin-top: 6px;
     font-family: var(--font);
 }
+
 .btn:hover {
     background: #2a2a2a;
     border-color: var(--border-hover);
 }
+
 .btn:active {
     transform: scale(0.97);
 }
+
 .btn-outline {
     background: transparent;
     border-color: var(--border-color);
 }
+
 .btn-outline:hover {
     background: var(--bg-hover);
 }
+
 .btn-success {
     background: var(--accent-green);
     border-color: var(--accent-green);
     color: #fff;
 }
+
 .btn-success:hover {
     background: var(--accent-green-light);
     border-color: var(--accent-green-light);
 }
+
 .btn-danger {
     background: var(--accent-red);
     border-color: var(--accent-red);
     color: #fff;
 }
+
 .btn-danger:hover {
     background: var(--accent-red-light);
     border-color: var(--accent-red-light);
 }
+
 .btn-sm {
     padding: 6px 14px;
     font-size: 13px;
@@ -408,7 +601,7 @@ body {
 }
 
 /* ================================================================
-   НИЖНЯЯ НАВИГАЦИЯ
+   9. НИЖНЯЯ НАВИГАЦИЯ
    ================================================================ */
 .bottom-nav {
     position: fixed;
@@ -424,6 +617,7 @@ body {
     border-top: 1px solid var(--border-color);
     z-index: 30;
 }
+
 .bottom-nav .tab {
     display: flex;
     flex-direction: column;
@@ -439,23 +633,29 @@ body {
     font-family: var(--font);
     position: relative;
 }
+
 .bottom-nav .tab .icon {
     font-size: 22px;
     line-height: 1.2;
     transition: var(--transition);
 }
+
 .bottom-nav .tab.active {
     color: var(--text-primary);
 }
+
 .bottom-nav .tab.active .icon {
     transform: scale(1.05);
 }
+
 .bottom-nav .tab:hover {
     color: var(--text-secondary);
 }
+
 .bottom-nav .tab:active {
     transform: scale(0.92);
 }
+
 .bottom-nav .tab.active::after {
     content: '';
     position: absolute;
@@ -469,7 +669,7 @@ body {
 }
 
 /* ================================================================
-   МОДАЛЬНЫЕ ОКНА
+   10. МОДАЛЬНЫЕ ОКНА
    ================================================================ */
 .modal-overlay {
     display: none;
@@ -485,9 +685,11 @@ body {
     align-items: flex-end;
     justify-content: center;
 }
+
 .modal-overlay.show {
     display: flex;
 }
+
 .modal-content {
     background: var(--bg-secondary);
     border-radius: 24px 24px 0 0;
@@ -501,16 +703,25 @@ body {
     animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
+
 @keyframes slideUp {
-    from { transform: translateY(40px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(40px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
+
 .modal-scroll {
     flex: 1;
     overflow-y: auto;
     padding-bottom: 10px;
     -webkit-overflow-scrolling: touch;
 }
+
 .modal-content h2 {
     font-size: 20px;
     font-weight: 700;
@@ -519,6 +730,7 @@ body {
     flex-shrink: 0;
     color: var(--text-primary);
 }
+
 .modal-content label {
     font-size: 13px;
     font-weight: 500;
@@ -527,6 +739,7 @@ body {
     margin-top: 12px;
     padding: 0 20px;
 }
+
 .modal-content input,
 .modal-content select,
 .modal-content textarea {
@@ -541,6 +754,7 @@ body {
     font-family: var(--font);
     transition: var(--transition);
 }
+
 .modal-content input:focus,
 .modal-content select:focus,
 .modal-content textarea:focus {
@@ -548,20 +762,24 @@ body {
     outline: none;
     background: #222;
 }
+
 .modal-content textarea {
     resize: vertical;
     min-height: 40px;
     line-height: 1.5;
 }
+
 .modal-content input[type="file"] {
     padding: 8px;
     background: var(--bg-input);
     border: 1px dashed var(--border-color);
     cursor: pointer;
 }
+
 .modal-content input[type="file"]:hover {
     border-color: var(--border-hover);
 }
+
 .modal-content input[type="checkbox"] {
     width: 18px;
     height: 18px;
@@ -569,6 +787,7 @@ body {
     cursor: pointer;
     margin: 0;
 }
+
 .modal-actions {
     display: flex;
     gap: 10px;
@@ -576,6 +795,7 @@ body {
     padding: 0 20px 12px 20px;
     flex-shrink: 0;
 }
+
 .modal-actions button {
     flex: 1;
     padding: 12px;
@@ -587,24 +807,30 @@ body {
     transition: var(--transition);
     font-family: var(--font);
 }
+
 .modal-actions .btn-cancel {
     background: var(--bg-hover);
     color: var(--text-secondary);
 }
+
 .modal-actions .btn-cancel:hover {
     background: #2a2a2a;
 }
+
 .modal-actions .btn-save {
     background: var(--accent-green);
     color: #fff;
 }
+
 .modal-actions .btn-save:hover {
     background: var(--accent-green-light);
 }
+
 .modal-actions .btn-danger-action {
     background: var(--accent-red);
     color: #fff;
 }
+
 .modal-actions .btn-danger-action:hover {
     background: var(--accent-red-light);
 }
@@ -615,6 +841,7 @@ body {
     gap: 6px;
     padding: 4px 20px 0 20px;
 }
+
 .checkbox-grid label {
     display: flex;
     align-items: center;
@@ -630,10 +857,12 @@ body {
     transition: var(--transition);
     font-weight: 400;
 }
+
 .checkbox-grid label:hover {
     background: var(--bg-hover);
     border-color: var(--border-hover);
 }
+
 .checkbox-grid input[type="checkbox"] {
     width: 15px;
     height: 15px;
@@ -645,9 +874,11 @@ body {
     margin: 8px 20px 0 20px;
     display: none;
 }
+
 .image-preview.show {
     display: block;
 }
+
 .image-preview img {
     max-width: 100%;
     max-height: 200px;
@@ -656,7 +887,7 @@ body {
 }
 
 /* ================================================================
-   ПРОФИЛЬ
+   11. ПРОФИЛЬ
    ================================================================ */
 .profile-avatar {
     width: 80px;
@@ -675,18 +906,22 @@ body {
     border: 2px solid var(--border-color);
     transition: var(--transition);
 }
+
 .profile-avatar:hover {
     border-color: var(--border-hover);
     transform: scale(1.02);
 }
+
 .profile-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
+
 .profile-avatar input {
     display: none;
 }
+
 .profile-item {
     background: var(--bg-card);
     padding: 12px 16px;
@@ -698,16 +933,19 @@ body {
     align-items: center;
     gap: 12px;
 }
+
 .profile-item .label {
     font-size: 14px;
     color: var(--text-secondary);
     flex-shrink: 0;
 }
+
 .profile-item .value {
     font-size: 14px;
     color: var(--text-primary);
     font-weight: 500;
 }
+
 .profile-item input[type="text"],
 .profile-item input[type="email"] {
     border: none;
@@ -720,10 +958,12 @@ body {
     color: var(--text-primary);
     transition: var(--transition);
 }
+
 .profile-item input[type="text"]:focus,
 .profile-item input[type="email"]:focus {
     outline: 1px solid var(--border-hover);
 }
+
 .debug-info {
     background: var(--bg-card);
     border-radius: var(--radius-sm);
@@ -733,6 +973,7 @@ body {
     color: var(--text-muted);
     text-align: center;
 }
+
 .debug-info .time {
     font-weight: 600;
     color: var(--text-primary);
@@ -740,7 +981,7 @@ body {
 }
 
 /* ================================================================
-   СЛАЙДЕР
+   12. СЛАЙДЕР-КАРТОЧКА
    ================================================================ */
 .slider-overlay {
     display: none;
@@ -754,9 +995,11 @@ body {
     align-items: center;
     justify-content: center;
 }
+
 .slider-overlay.show {
     display: flex;
 }
+
 .slider-container {
     position: relative;
     width: 100%;
@@ -766,6 +1009,7 @@ body {
     justify-content: center;
     overflow: hidden;
 }
+
 .slider-content {
     width: 100%;
     height: 100%;
@@ -776,6 +1020,7 @@ body {
     cursor: pointer;
     position: relative;
 }
+
 .slider-content img {
     max-width: 100%;
     max-height: 100%;
@@ -783,11 +1028,13 @@ body {
     user-select: none;
     -webkit-user-select: none;
 }
+
 .slider-content .no-photo {
     font-size: 80px;
     color: var(--text-muted);
     cursor: pointer;
 }
+
 .slider-nav {
     position: absolute;
     top: 50%;
@@ -803,18 +1050,23 @@ body {
     z-index: 10;
     line-height: 1;
 }
+
 .slider-nav:hover {
     background: rgba(255, 255, 255, 0.12);
 }
+
 .slider-nav:active {
     transform: translateY(-50%) scale(0.92);
 }
+
 .slider-prev {
     left: 12px;
 }
+
 .slider-next {
     right: 12px;
 }
+
 .slider-close {
     position: absolute;
     top: 16px;
@@ -829,9 +1081,11 @@ body {
     z-index: 15;
     transition: var(--transition);
 }
+
 .slider-close:hover {
     background: rgba(255, 255, 255, 0.15);
 }
+
 .slider-info {
     position: absolute;
     bottom: 24px;
@@ -846,6 +1100,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.06);
     pointer-events: none;
 }
+
 .slider-title {
     position: absolute;
     top: 16px;
@@ -866,7 +1121,9 @@ body {
     pointer-events: none;
 }
 
-/* Меню слайдера */
+/* ================================================================
+   13. МЕНЮ СЛАЙДЕРА (выезжает снизу)
+   ================================================================ */
 .slider-menu {
     position: absolute;
     bottom: 0;
@@ -880,15 +1137,18 @@ body {
     z-index: 20;
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
 }
+
 .slider-menu.open {
     max-height: 70vh;
 }
+
 .slider-menu-inner {
     padding: 0 20px 20px 20px;
     max-height: calc(70vh - 50px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+
 .slider-menu-handle {
     display: flex;
     justify-content: center;
@@ -898,6 +1158,7 @@ body {
     -webkit-user-select: none;
     flex-shrink: 0;
 }
+
 .handle-bar {
     width: 40px;
     height: 4px;
@@ -905,9 +1166,11 @@ body {
     border-radius: 4px;
     transition: var(--transition);
 }
+
 .slider-menu-handle:hover .handle-bar {
     background: #666;
 }
+
 .slider-menu-header {
     display: flex;
     justify-content: space-between;
@@ -916,6 +1179,7 @@ body {
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
+
 .slider-menu-title {
     font-size: 18px;
     font-weight: 700;
@@ -926,11 +1190,13 @@ body {
     flex: 1;
     min-width: 0;
 }
+
 .slider-menu-title-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .slider-menu-edit {
     background: transparent;
     border: none;
@@ -942,10 +1208,12 @@ body {
     transition: var(--transition);
     flex-shrink: 0;
 }
+
 .slider-menu-edit:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
 }
+
 .slider-menu-close-btn {
     background: transparent;
     border: none;
@@ -957,32 +1225,39 @@ body {
     transition: var(--transition);
     flex-shrink: 0;
 }
+
 .slider-menu-close-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
 }
+
 .slider-menu-body {
     padding-top: 8px;
     overflow-y: auto;
 }
+
 .slider-field {
     padding: 6px 0;
     border-bottom: 1px solid var(--border-color);
 }
+
 .slider-field:last-child {
     border-bottom: none;
 }
+
 .slider-label {
     display: block;
     font-size: 13px;
     color: var(--text-muted);
     margin-bottom: 2px;
 }
+
 .slider-value {
     font-size: 14px;
     color: var(--text-primary);
     word-break: break-word;
 }
+
 .slider-field textarea {
     width: 100%;
     padding: 6px 10px;
@@ -995,15 +1270,18 @@ body {
     resize: vertical;
     min-height: 40px;
 }
+
 .slider-field textarea:focus {
     border-color: var(--border-hover);
     outline: none;
 }
+
 .slider-tags-list {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
 }
+
 .slider-tags-list .tag {
     font-size: 12px;
     background: var(--bg-hover);
@@ -1012,27 +1290,33 @@ body {
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
+
 .slider-connections {
     margin-top: 8px;
 }
+
 .connection-group {
     padding: 4px 0;
     border-bottom: 1px solid var(--border-color);
 }
+
 .connection-group:last-child {
     border-bottom: none;
 }
+
 .connection-label {
     font-size: 13px;
     color: var(--text-muted);
     display: block;
     margin-bottom: 2px;
 }
+
 .connection-items {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
 }
+
 .connection-items .connection-item {
     font-size: 12px;
     background: var(--bg-hover);
@@ -1043,58 +1327,75 @@ body {
     cursor: pointer;
     transition: var(--transition);
 }
+
 .connection-items .connection-item:hover {
     border-color: var(--border-hover);
     color: var(--text-primary);
 }
+
 .slider-actions {
     display: flex;
     gap: 8px;
     padding: 10px 0 4px 0;
     flex-wrap: wrap;
 }
+
 .slider-actions .btn-sm {
     flex: 1;
-    min-width: 80px;
+    min-width: 70px;
+    font-size: 12px;
+    padding: 6px 10px;
 }
 
 /* ================================================================
-   ПУСТЫЕ СОСТОЯНИЯ
+   14. ПУСТЫЕ СОСТОЯНИЯ
    ================================================================ */
 .empty-state {
     text-align: center;
     padding: 60px 20px;
     color: var(--text-muted);
 }
+
 .empty-state .icon-big {
     font-size: 60px;
     display: block;
     margin-bottom: 16px;
 }
+
 .empty-state p {
     font-size: 16px;
     margin-bottom: 4px;
 }
+
 .empty-state .sub {
     font-size: 14px;
     color: #555;
 }
 
 /* ================================================================
-   АДАПТИВНОСТЬ
+   15. АДАПТИВНОСТЬ
    ================================================================ */
 @media (max-width: 768px) {
-    .references-grid {
+    .collections-grid {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+    }
+    .references-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
     }
     .app-header h1 {
         font-size: 20px;
     }
 }
+
 @media (max-width: 480px) {
-    .references-grid {
+    .collections-grid {
         grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+    }
+    .references-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 8px;
     }
     .app-header {
@@ -1162,8 +1463,12 @@ body {
         font-size: 24px;
         padding: 8px 14px;
     }
-    .slider-prev { left: 4px; }
-    .slider-next { right: 4px; }
+    .slider-prev {
+        left: 4px;
+    }
+    .slider-next {
+        right: 4px;
+    }
     .slider-close {
         font-size: 18px;
         padding: 6px 14px;
@@ -1190,10 +1495,32 @@ body {
     .slider-menu-title {
         font-size: 16px;
     }
+    .collection-name {
+        font-size: 14px;
+    }
+    .collection-meta {
+        font-size: 10px;
+    }
+    .reference-card .info .title {
+        font-size: 12px;
+    }
+    .reference-card .info .meta {
+        font-size: 9px;
+    }
+    .slider-actions .btn-sm {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 50px;
+    }
 }
+
 @media (max-width: 360px) {
+    .collections-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
+    }
     .references-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
         gap: 6px;
     }
     .app-header h1 {
@@ -1208,6 +1535,7 @@ body {
         font-size: 16px;
     }
 }
+
 @media (min-width: 768px) {
     .slider-menu.open {
         max-height: 50vh;
@@ -1218,15 +1546,53 @@ body {
 }
 
 /* ================================================================
-   УТИЛИТЫ
+   16. УТИЛИТЫ
    ================================================================ */
-.hidden { display: none !important; }
-.text-center { text-align: center; }
-.mt-8 { margin-top: 8px; }
-.mt-12 { margin-top: 12px; }
-.mt-16 { margin-top: 16px; }
-.gap-8 { gap: 8px; }
-.flex { display: flex; }
-.flex-wrap { flex-wrap: wrap; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-8 {
+    margin-top: 8px;
+}
+
+.mt-12 {
+    margin-top: 12px;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.gap-8 {
+    gap: 8px;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.nsfw-badge {
+    background: rgba(200, 50, 50, 0.85);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+}
