@@ -23,6 +23,24 @@ jobs:
         distribution: 'zulu'
         java-version: '21'
 
+    - name: Create Capacitor project
+      run: |
+        echo '{
+          "name": "PhotoNote",
+          "version": "1.0.0",
+          "scripts": {
+            "build": "echo \"Building PhotoNote...\""
+          },
+          "dependencies": {
+            "@capgo/capacitor-file-sharer": "^8.0.0",
+            "@capgo/capacitor-zip": "^8.0.0"
+          },
+          "devDependencies": {
+            "@capacitor/cli": "^8.0.0",
+            "@capacitor/android": "^8.0.0"
+          }
+        }' > package.json
+
     - name: Install dependencies
       run: npm install
 
@@ -58,6 +76,12 @@ jobs:
           [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          
+          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           
           echo "✅ Icons installed!"
         else
