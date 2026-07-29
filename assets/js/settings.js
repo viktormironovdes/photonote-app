@@ -1,5 +1,10 @@
 // ================================================================
-// ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ
+// ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ (С ZIP-АРХИВАМИ)
+// Версия 0.1.2 — ZIP-архивы для экспорта/импорта
+// ================================================================
+
+// ================================================================
+// ПРОФИЛЬ
 // ================================================================
 
 function loadProfile() {
@@ -70,86 +75,20 @@ function handleAvatarUpload(event) {
 }
 
 // ================================================================
-// ЭКСПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ
+// ЭКСПОРТ ВСЕХ ДАННЫХ (В ZIP-АРХИВЕ)
 // ================================================================
 
-function exportReferences() {
-    if (state.references.length === 0) {
-        showNotification('Нет референсов для экспорта', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'references',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.references.length,
-        data: state.references
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `references_${getTodayStr()}.json`, '📸 Референсы');
-}
-
-function exportSchemes() {
-    if (state.schemes.length === 0) {
-        showNotification('Нет схем для экспорта', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'schemes',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.schemes.length,
-        data: state.schemes
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `schemes_${getTodayStr()}.json`, '💡 Схемы света');
-}
-
-function exportEquipment() {
-    if (state.equipment.length === 0) {
-        showNotification('Нет оборудования для экспорта', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'equipment',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.equipment.length,
-        data: state.equipment
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `equipment_${getTodayStr()}.json`, '📷 Оборудование');
-}
-
-function exportCheatsheets() {
-    if (state.cheatsheets.length === 0) {
-        showNotification('Нет шпаргалок для экспорта', 'warning');
-        return;
-    }
-    
-    const data = {
-        type: 'cheatsheets',
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        count: state.cheatsheets.length,
-        data: state.cheatsheets
-    };
-    
-    const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `cheatsheets_${getTodayStr()}.json`, '📋 Шпаргалки');
-}
-
 function exportAllData() {
+    if (state.references.length === 0 && state.collections.length === 0) {
+        showNotification('Нет данных для экспорта', 'warning');
+        return;
+    }
+    
     const data = {
         type: 'all',
         version: '1.0',
         exportedAt: new Date().toISOString(),
+        collections: state.collections,
         references: state.references,
         schemes: state.schemes,
         equipment: state.equipment,
@@ -158,341 +97,179 @@ function exportAllData() {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `all_data_${getTodayStr()}.json`, '💾 Все данные');
-}
-
-// ================================================================
-// СОХРАНЕНИЕ ФАЙЛА ЧЕРЕЗ @capgo/capacitor-file-sharer
-// ================================================================
-
-function saveFileWithSharer(jsonString, filename, title) {
-    // Пробуем использовать Capacitor File Sharer (для Android APK)
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        try {
-            // Проверяем доступность плагина
-            if (window.Capacitor.Plugins && window.Capacitor.Plugins.FileSharer) {
+    const filename = `phonote_backup_${getTodayStr()}.zip`;
+    
+    // Пробуем использовать Capacitor Zip плагин
+    if (window.Capacitor && window.Capacitor.isNativePlatform() &&
+        window.Capacitor.Plugins && window.Capacitor.Plugins.Zip) {
+        
+        const Zip = window.Capacitor.Plugins.Zip;
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
+        
+        // Сначала сохраняем JSON во временный файл
+        Filesystem.writeFile({
+            path: 'data.json',
+            data: jsonString,
+            directory: 'CACHE',
+            encoding: 'utf8'
+        }).then(() => {
+            // Затем упаковываем его в ZIP
+            return Zip.zip({
+                source: 'data.json',
+                destination: filename,
+                directory: 'CACHE'
+            });
+        }).then(() => {
+            // Читаем ZIP как Base64
+            return Filesystem.readFile({
+                path: filename,
+                directory: 'CACHE'
+            });
+        }).then((result) => {
+            // Отправляем через FileSharer
+            const base64Data = result.data;
+            if (window.Capacitor.Plugins.FileSharer) {
                 const FileSharer = window.Capacitor.Plugins.FileSharer;
-                
-                // Конвертируем строку в Base64
-                const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
-                
                 FileSharer.share({
                     filename: filename,
                     base64Data: base64Data,
-                    contentType: 'application/json'
+                    contentType: 'application/zip'
                 }).then(() => {
-                    showNotification(`✅ Файл "${filename}" сохранён!`, 'success');
+                    showNotification('✅ Архив экспортирован!', 'success');
+                    // Чистим временные файлы
+                    Filesystem.deleteFile({
+                        path: 'data.json',
+                        directory: 'CACHE'
+                    }).catch(() => {});
+                    Filesystem.deleteFile({
+                        path: filename,
+                        directory: 'CACHE'
+                    }).catch(() => {});
                 }).catch((err) => {
-                    console.error('❌ Ошибка FileSharer:', err);
-                    // Если плагин не сработал — запасной вариант
-                    fallbackSave(jsonString, filename);
+                    console.error('❌ Ошибка экспорта:', err);
+                    fallbackExport(jsonString, filename);
                 });
             } else {
-                console.log('⚠️ FileSharer плагин не найден, используем запасной вариант');
-                fallbackSave(jsonString, filename);
+                fallbackExport(jsonString, filename);
             }
-        } catch (e) {
-            console.error('❌ Ошибка при вызове FileSharer:', e);
-            fallbackSave(jsonString, filename);
-        }
-    } else {
-        // Для браузера — загрузка через ссылку
-        fallbackSave(jsonString, filename);
-    }
-}
-
-// ================================================================
-// ЗАПАСНОЙ ВАРИАНТ (для браузера или если плагин не работает)
-// ================================================================
-
-function fallbackSave(jsonString, filename) {
-    // Пробуем через Capacitor Filesystem (если есть)
-    if (window.Capacitor && window.Capacitor.isNativePlatform() && 
-        window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem) {
-        
-        const Filesystem = window.Capacitor.Plugins.Filesystem;
-        
-        Filesystem.writeFile({
-            path: filename,
-            data: jsonString,
-            directory: 'DOCUMENTS',
-            encoding: 'utf8'
-        }).then(() => {
-            showNotification(`✅ Файл "${filename}" сохранён в Документы!`, 'success');
-        }).catch(() => {
-            // Если не получилось — скачиваем через браузер
-            downloadJsonString(jsonString, filename);
+        }).catch((err) => {
+            console.error('❌ Ошибка ZIP:', err);
+            fallbackExport(jsonString, filename);
         });
     } else {
-        // Браузерная загрузка
-        downloadJsonString(jsonString, filename);
+        // Запасной вариант (для браузера)
+        fallbackExport(jsonString, filename);
     }
 }
 
 // ================================================================
-// БРАУЗЕРНАЯ ЗАГРУЗКА (самый надёжный запасной вариант)
+// ЗАПАСНОЙ ВАРИАНТ ЭКСПОРТА (БЕЗ ZIP)
 // ================================================================
 
-function downloadJsonString(jsonString, filename) {
+function fallbackExport(jsonString, filename) {
+    // Скачиваем как обычный JSON (для браузера)
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename;
+    a.download = filename.replace('.zip', '.json');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    showNotification(`📥 Файл "${filename}" скачан!`, 'success');
+    showNotification(`📥 Файл "${filename.replace('.zip', '.json')}" скачан!`, 'success');
 }
 
 // ================================================================
-// ИМПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ
+// ИМПОРТ ВСЕХ ДАННЫХ (ИЗ ZIP-АРХИВА)
 // ================================================================
-
-function importReferences(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'references' || !data.data) {
-                throw new Error('Неверный формат файла референсов');
-            }
-            
-            const count = data.data.length;
-            const action = confirm(`Найдено ${count} референсов.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
-            
-            if (action) {
-                let added = 0;
-                data.data.forEach(newRef => {
-                    const exists = state.references.some(r => r.id === newRef.id);
-                    if (!exists) {
-                        state.references.push(newRef);
-                        added++;
-                    }
-                });
-                showNotification(`Добавлено ${added} новых референсов (${count - added} пропущено как дубликаты)`);
-            } else {
-                state.references = data.data;
-                showNotification(`Заменено ${count} референсов`);
-            }
-            
-            saveState();
-            applyFilters();
-            renderReferences();
-            updateCounts();
-            
-        } catch (err) {
-            showNotification('Ошибка импорта: ' + err.message, 'error');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
-
-function importSchemes(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'schemes' || !data.data) {
-                throw new Error('Неверный формат файла схем');
-            }
-            
-            const count = data.data.length;
-            const action = confirm(`Найдено ${count} схем.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
-            
-            if (action) {
-                let added = 0;
-                data.data.forEach(newScheme => {
-                    const exists = state.schemes.some(s => s.id === newScheme.id);
-                    if (!exists) {
-                        state.schemes.push(newScheme);
-                        added++;
-                    }
-                });
-                showNotification(`Добавлено ${added} новых схем (${count - added} пропущено как дубликаты)`);
-            } else {
-                state.schemes = data.data;
-                showNotification(`Заменено ${count} схем`);
-            }
-            
-            saveState();
-            renderSchemes();
-            renderReferences();
-            updateCounts();
-            
-        } catch (err) {
-            showNotification('Ошибка импорта: ' + err.message, 'error');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
-
-function importEquipment(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'equipment' || !data.data) {
-                throw new Error('Неверный формат файла оборудования');
-            }
-            
-            const count = data.data.length;
-            const action = confirm(`Найдено ${count} единиц оборудования.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
-            
-            if (action) {
-                let added = 0;
-                data.data.forEach(newEq => {
-                    const exists = state.equipment.some(e => e.id === newEq.id);
-                    if (!exists) {
-                        state.equipment.push(newEq);
-                        added++;
-                    }
-                });
-                showNotification(`Добавлено ${added} новых единиц (${count - added} пропущено как дубликаты)`);
-            } else {
-                state.equipment = data.data;
-                showNotification(`Заменено ${count} единиц оборудования`);
-            }
-            
-            saveState();
-            renderEquipment();
-            renderReferences();
-            updateCounts();
-            
-        } catch (err) {
-            showNotification('Ошибка импорта: ' + err.message, 'error');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
-
-function importCheatsheets(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'cheatsheets' || !data.data) {
-                throw new Error('Неверный формат файла шпаргалок');
-            }
-            
-            const count = data.data.length;
-            const action = confirm(`Найдено ${count} шпаргалок.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
-            
-            if (action) {
-                let added = 0;
-                data.data.forEach(newCs => {
-                    const exists = state.cheatsheets.some(c => c.id === newCs.id);
-                    if (!exists) {
-                        state.cheatsheets.push(newCs);
-                        added++;
-                    }
-                });
-                showNotification(`Добавлено ${added} новых шпаргалок (${count - added} пропущено как дубликаты)`);
-            } else {
-                state.cheatsheets = data.data;
-                showNotification(`Заменено ${count} шпаргалок`);
-            }
-            
-            saveState();
-            renderCheatsheets();
-            renderReferences();
-            updateCounts();
-            
-        } catch (err) {
-            showNotification('Ошибка импорта: ' + err.message, 'error');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
 
 function importAllData(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Проверяем, ZIP это или JSON
+    const isZip = file.name.endsWith('.zip');
+    
+    if (isZip) {
+        importFromZip(file);
+    } else {
+        importFromJson(file);
+    }
+}
+
+// ================================================================
+// ИМПОРТ ИЗ ZIP-АРХИВА
+// ================================================================
+
+function importFromZip(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1] || e.target.result;
+        
+        if (window.Capacitor && window.Capacitor.isNativePlatform() &&
+            window.Capacitor.Plugins && window.Capacitor.Plugins.Zip) {
+            
+            const Zip = window.Capacitor.Plugins.Zip;
+            const Filesystem = window.Capacitor.Plugins.Filesystem;
+            
+            // Сохраняем ZIP во временную папку
+            Filesystem.writeFile({
+                path: 'import.zip',
+                data: base64Data,
+                directory: 'CACHE'
+            }).then(() => {
+                // Распаковываем
+                return Zip.unzip({
+                    source: 'import.zip',
+                    destination: 'import',
+                    directory: 'CACHE'
+                });
+            }).then(() => {
+                // Читаем data.json из распакованной папки
+                return Filesystem.readFile({
+                    path: 'import/data.json',
+                    directory: 'CACHE'
+                });
+            }).then((result) => {
+                const jsonString = result.data;
+                processImportedData(jsonString);
+                // Чистим временные файлы
+                Filesystem.deleteFile({
+                    path: 'import.zip',
+                    directory: 'CACHE'
+                }).catch(() => {});
+                Filesystem.deleteFile({
+                    path: 'import/data.json',
+                    directory: 'CACHE'
+                }).catch(() => {});
+                Filesystem.rmdir({
+                    path: 'import',
+                    directory: 'CACHE'
+                }).catch(() => {});
+            }).catch((err) => {
+                console.error('❌ Ошибка распаковки:', err);
+                showNotification('❌ Ошибка распаковки архива', 'error');
+            });
+        } else {
+            // Запасной вариант для браузера
+            showNotification('Импорт ZIP доступен только в мобильном приложении', 'warning');
+        }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+// ================================================================
+// ИМПОРТ ИЗ JSON-ФАЙЛА (для совместимости)
+// ================================================================
+
+function importFromJson(file) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'all' || !data.references) {
-                throw new Error('Неверный формат файла');
-            }
-            
-            const total = (data.references?.length || 0) + 
-                         (data.schemes?.length || 0) + 
-                         (data.equipment?.length || 0) + 
-                         (data.cheatsheets?.length || 0);
-            
-            const action = confirm(`Найдено ${total} записей.\n\n"OK" - Добавить к существующим\n"Отмена" - Заменить все`);
-            
-            if (action) {
-                let added = { refs: 0, schemes: 0, eq: 0, cs: 0 };
-                
-                (data.references || []).forEach(newRef => {
-                    if (!state.references.some(r => r.id === newRef.id)) {
-                        state.references.push(newRef);
-                        added.refs++;
-                    }
-                });
-                
-                (data.schemes || []).forEach(newScheme => {
-                    if (!state.schemes.some(s => s.id === newScheme.id)) {
-                        state.schemes.push(newScheme);
-                        added.schemes++;
-                    }
-                });
-                
-                (data.equipment || []).forEach(newEq => {
-                    if (!state.equipment.some(e => e.id === newEq.id)) {
-                        state.equipment.push(newEq);
-                        added.eq++;
-                    }
-                });
-                
-                (data.cheatsheets || []).forEach(newCs => {
-                    if (!state.cheatsheets.some(c => c.id === newCs.id)) {
-                        state.cheatsheets.push(newCs);
-                        added.cs++;
-                    }
-                });
-                
-                showNotification(`Добавлено: 📸${added.refs} 💡${added.schemes} 📷${added.eq} 📋${added.cs}`);
-            } else {
-                state.references = data.references || [];
-                state.schemes = data.schemes || [];
-                state.equipment = data.equipment || [];
-                state.cheatsheets = data.cheatsheets || [];
-                if (data.user) {
-                    state.user = data.user;
-                }
-                showNotification('Все данные заменены!');
-            }
-            
-            saveState();
-            renderAll();
-            updateCounts();
-            
+            const jsonString = e.target.result;
+            processImportedData(jsonString);
         } catch (err) {
             showNotification('Ошибка импорта: ' + err.message, 'error');
         }
@@ -501,8 +278,175 @@ function importAllData(event) {
     event.target.value = '';
 }
 
+// ================================================================
+// ОБРАБОТКА ИМПОРТИРОВАННЫХ ДАННЫХ
+// ================================================================
+
+function processImportedData(jsonString) {
+    try {
+        const data = JSON.parse(jsonString);
+        
+        if (data.type !== 'all' || !data.references) {
+            throw new Error('Неверный формат данных');
+        }
+        
+        const total = (data.references?.length || 0) + 
+                     (data.schemes?.length || 0) + 
+                     (data.equipment?.length || 0) + 
+                     (data.cheatsheets?.length || 0) +
+                     (data.collections?.length || 0);
+        
+        const action = confirm(`Найдено ${total} записей.\n\n"OK" — Добавить к существующим\n"Отмена" — Заменить все`);
+        
+        if (action) {
+            let added = { refs: 0, schemes: 0, eq: 0, cs: 0, collections: 0 };
+            
+            (data.collections || []).forEach(newCol => {
+                if (!state.collections.some(c => c.id === newCol.id)) {
+                    state.collections.push(newCol);
+                    added.collections++;
+                }
+            });
+            
+            (data.references || []).forEach(newRef => {
+                if (!state.references.some(r => r.id === newRef.id)) {
+                    state.references.push(newRef);
+                    added.refs++;
+                }
+            });
+            
+            (data.schemes || []).forEach(newScheme => {
+                if (!state.schemes.some(s => s.id === newScheme.id)) {
+                    state.schemes.push(newScheme);
+                    added.schemes++;
+                }
+            });
+            
+            (data.equipment || []).forEach(newEq => {
+                if (!state.equipment.some(e => e.id === newEq.id)) {
+                    state.equipment.push(newEq);
+                    added.eq++;
+                }
+            });
+            
+            (data.cheatsheets || []).forEach(newCs => {
+                if (!state.cheatsheets.some(c => c.id === newCs.id)) {
+                    state.cheatsheets.push(newCs);
+                    added.cs++;
+                }
+            });
+            
+            showNotification(`✅ Добавлено: 📁${added.collections} 📸${added.refs} 💡${added.schemes} 📷${added.eq} 📋${added.cs}`);
+        } else {
+            state.collections = data.collections || [];
+            state.references = data.references || [];
+            state.schemes = data.schemes || [];
+            state.equipment = data.equipment || [];
+            state.cheatsheets = data.cheatsheets || [];
+            if (data.user) {
+                state.user = data.user;
+            }
+            showNotification('✅ Все данные заменены!');
+        }
+        
+        saveState();
+        renderAll();
+        updateCounts();
+        
+    } catch (err) {
+        showNotification('❌ Ошибка импорта: ' + err.message, 'error');
+    }
+}
+
+// ================================================================
+// ЭКСПОРТ КОЛЛЕКЦИИ (В ZIP-АРХИВЕ)
+// ================================================================
+
+function exportCollection(collectionId) {
+    const collection = getCollection(collectionId);
+    if (!collection) return;
+    
+    const refs = getReferencesByCollection(collectionId);
+    if (refs.length === 0) {
+        showNotification('В коллекции нет референсов для экспорта', 'warning');
+        return;
+    }
+    
+    const data = {
+        type: 'collection',
+        version: '1.0',
+        exportedAt: new Date().toISOString(),
+        collection: {
+            name: collection.name,
+            description: collection.description,
+            coverImage: collection.coverImage
+        },
+        references: refs,
+        schemes: state.schemes,
+        equipment: state.equipment,
+        cheatsheets: state.cheatsheets
+    };
+    
+    const jsonString = JSON.stringify(data, null, 2);
+    const filename = `collection_${collection.name}_${getTodayStr()}.zip`;
+    
+    // Используем ту же логику с ZIP
+    if (window.Capacitor && window.Capacitor.isNativePlatform() &&
+        window.Capacitor.Plugins && window.Capacitor.Plugins.Zip) {
+        
+        const Zip = window.Capacitor.Plugins.Zip;
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
+        
+        Filesystem.writeFile({
+            path: 'data.json',
+            data: jsonString,
+            directory: 'CACHE',
+            encoding: 'utf8'
+        }).then(() => {
+            return Zip.zip({
+                source: 'data.json',
+                destination: filename,
+                directory: 'CACHE'
+            });
+        }).then(() => {
+            return Filesystem.readFile({
+                path: filename,
+                directory: 'CACHE'
+            });
+        }).then((result) => {
+            const base64Data = result.data;
+            if (window.Capacitor.Plugins.FileSharer) {
+                const FileSharer = window.Capacitor.Plugins.FileSharer;
+                FileSharer.share({
+                    filename: filename,
+                    base64Data: base64Data,
+                    contentType: 'application/zip'
+                }).then(() => {
+                    showNotification('✅ Архив коллекции экспортирован!', 'success');
+                    Filesystem.deleteFile({
+                        path: 'data.json',
+                        directory: 'CACHE'
+                    }).catch(() => {});
+                    Filesystem.deleteFile({
+                        path: filename,
+                        directory: 'CACHE'
+                    }).catch(() => {});
+                }).catch((err) => {
+                    console.error('❌ Ошибка экспорта:', err);
+                    fallbackExport(jsonString, filename);
+                });
+            }
+        }).catch((err) => {
+            console.error('❌ Ошибка ZIP:', err);
+            fallbackExport(jsonString, filename);
+        });
+    } else {
+        fallbackExport(jsonString, filename);
+    }
+}
+
 function renderAll() {
-    renderReferences();
+    renderCollections();
     renderSchemes();
     renderEquipment();
     renderCheatsheets();
