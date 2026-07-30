@@ -89,6 +89,12 @@ jobs:
           [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           
+          [ -f "$ICON_PATH/icon-48.png" ] && cp "$ICON_PATH/icon-48.png" android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-72.png" ] && cp "$ICON_PATH/icon-72.png" android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-96.png" ] && cp "$ICON_PATH/icon-96.png" android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          
           echo "✅ Icons installed!"
         else
           echo "⚠️ Icon folder not found at $ICON_PATH"
