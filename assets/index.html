@@ -168,17 +168,17 @@
         </div>
 
         <!-- ============================================================
-        ЭКСПОРТ / ИМПОРТ
+        ЭКСПОРТ / ИМПОРТ (ZIP)
         ============================================================ -->
         <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
-            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт / Импорт</div>
+            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт / Импорт (ZIP)</div>
             
             <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">📤 Экспорт</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-success" onclick="exportAllData()" style="flex:1;min-width:80px;">💾 Все данные</button>
             </div>
             <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
-                📱 На телефоне открывается окно "Сохранить файл"
+                📦 Данные упаковываются в ZIP-архив
             </div>
             
             <div style="font-weight:500;font-size:13px;color:#888;margin:12px 0 4px 0;">📥 Импорт</div>
@@ -187,8 +187,8 @@
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('importCollectionInput').click()" style="flex:1;min-width:80px;">📁 Коллекцию</button>
             </div>
             
-            <input type="file" id="importAllInput" accept=".json" style="display:none" onchange="importAllData(event)">
-            <input type="file" id="importCollectionInput" accept=".json" style="display:none" onchange="importCollection(event)">
+            <input type="file" id="importAllInput" accept=".zip" style="display:none" onchange="importAllData(event)">
+            <input type="file" id="importCollectionInput" accept=".zip" style="display:none" onchange="importCollection(event)">
             
             <button class="btn btn-danger" onclick="if(confirm('Удалить ВСЕ данные?')){localStorage.clear();location.reload();}" style="margin-top:6px;">🗑 Сбросить все данные</button>
         </div>
@@ -199,7 +199,7 @@
             <div style="margin-top:4px;font-size:12px;color:#666;" id="debugDate">--</div>
             <div style="margin-top:4px;font-size:11px;color:#555;" id="debugStorageSize">--</div>
             <div style="margin-top:6px;font-size:12px;color:#555;border-top:1px solid var(--border-color);padding-top:6px;">
-                📌 PhotoNote v0.1.1
+                📌 PhotoNote v0.1.2
             </div>
         </div>
     </div>
