@@ -1,5 +1,6 @@
 // ================================================================
 // РАБОТА С КОЛЛЕКЦИЯМИ
+// Версия 0.1.1 — ZIP-архивация
 // ================================================================
 
 let selectedCoverImage = null;
@@ -59,7 +60,6 @@ function renderCollections() {
 function getCollectionCover(collection) {
     if (collection.coverImage) return collection.coverImage;
     
-    // Если обложка не задана — берём первое фото из коллекции
     const refs = getReferencesByCollection(collection.id);
     const firstWithImage = refs.find(r => r.image);
     return firstWithImage ? firstWithImage.image : null;
@@ -116,7 +116,6 @@ function saveCollection() {
     }
     
     if (editId) {
-        // Редактирование
         updateCollection(editId, {
             name: name,
             description: description,
@@ -124,7 +123,6 @@ function saveCollection() {
         });
         showNotification('Коллекция обновлена!');
     } else {
-        // Создание
         addCollection(name, description, selectedCoverImage);
         showNotification('Коллекция создана!');
     }
@@ -188,10 +186,10 @@ function deleteCollectionConfirm(collectionId) {
 }
 
 // ================================================================
-// ЭКСПОРТ КОЛЛЕКЦИИ
+// ЭКСПОРТ КОЛЛЕКЦИИ (с ZIP)
 // ================================================================
 
-function exportCollection(collectionId) {
+async function exportCollection(collectionId) {
     const collection = getCollection(collectionId);
     if (!collection) return;
     
@@ -217,115 +215,151 @@ function exportCollection(collectionId) {
     };
     
     const jsonString = JSON.stringify(data, null, 2);
-    saveFileWithSharer(jsonString, `collection_${collection.name}_${getTodayStr()}.json`, `📁 Коллекция: ${collection.name}`);
+    const filename = `collection_${collection.name}_${getTodayStr()}.zip`;
+    
+    // Используем универсальную функцию из settings.js
+    try {
+        await shareAsZip(jsonString, filename, `📁 Коллекция: ${collection.name}`);
+    } catch (error) {
+        console.error('❌ Ошибка экспорта коллекции:', error);
+        showNotification('❌ Ошибка при экспорте коллекции', 'error');
+    }
 }
 
 // ================================================================
-// ИМПОРТ КОЛЛЕКЦИИ
+// ИМПОРТ КОЛЛЕКЦИИ (из ZIP)
 // ================================================================
 
-function importCollection(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            
-            if (data.type !== 'collection' || !data.collection || !data.references) {
-                throw new Error('Неверный формат файла коллекции');
-            }
-            
-            const count = data.references.length;
-            if (!confirm(`Найдено ${count} референсов.\n\nИмпортировать коллекцию "${data.collection.name}"?`)) return;
-            
-            // Проверяем, есть ли коллекция с таким именем
-            let existing = state.collections.find(c => c.name === data.collection.name);
-            if (existing) {
-                if (!confirm(`Коллекция "${data.collection.name}" уже существует.\n\n"OK" — добавить референсы в неё\n"Отмена" — создать коллекцию с суффиксом " (копия)"`)) {
-                    data.collection.name = data.collection.name + ' (копия)';
-                }
-            }
-            
-            // Создаём коллекцию
-            const newCollection = addCollection(
-                data.collection.name,
-                data.collection.description || '',
-                data.collection.coverImage || null
-            );
-            
-            // Импортируем схемы, оборудование, шпаргалки (если нет дубликатов)
-            const schemeMap = {};
-            (data.schemes || []).forEach(s => {
-                const exists = state.schemes.some(ex => ex.id === s.id);
-                if (!exists) {
-                    const newScheme = addScheme(s);
-                    schemeMap[s.id] = newScheme.id;
-                } else {
-                    schemeMap[s.id] = s.id;
-                }
-            });
-            
-            const equipmentMap = {};
-            (data.equipment || []).forEach(e => {
-                const exists = state.equipment.some(ex => ex.id === e.id);
-                if (!exists) {
-                    const newEq = addEquipment(e);
-                    equipmentMap[e.id] = newEq.id;
-                } else {
-                    equipmentMap[e.id] = e.id;
-                }
-            });
-            
-            const cheatsheetMap = {};
-            (data.cheatsheets || []).forEach(c => {
-                const exists = state.cheatsheets.some(ex => ex.id === c.id);
-                if (!exists) {
-                    const newCs = addCheatsheet(c);
-                    cheatsheetMap[c.id] = newCs.id;
-                } else {
-                    cheatsheetMap[c.id] = c.id;
-                }
-            });
-            
-            // Импортируем референсы
-            let added = 0;
-            data.references.forEach(r => {
-                // Проверяем дубликаты по ID
-                const exists = state.references.some(ex => ex.id === r.id);
-                if (!exists) {
-                    // Маппим связи
-                    const newSchemeIds = (r.schemeIds || []).map(id => schemeMap[id] || id);
-                    const newEquipmentIds = (r.equipmentIds || []).map(id => equipmentMap[id] || id);
-                    const newCheatSheetIds = (r.cheatSheetIds || []).map(id => cheatsheetMap[id] || id);
-                    
-                    const newRef = {
-                        ...r,
-                        id: 'ref_' + generateUUID(),
-                        collectionId: newCollection.id,
-                        schemeIds: newSchemeIds,
-                        equipmentIds: newEquipmentIds,
-                        cheatSheetIds: newCheatSheetIds,
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    state.references.push(newRef);
-                    newCollection.referenceIds.push(newRef.id);
-                    added++;
-                }
-            });
-            
-            saveState();
-            renderCollections();
-            renderAll();
-            showNotification(`✅ Импортировано ${added} референсов в коллекцию "${newCollection.name}"`);
-            
-        } catch (err) {
-            showNotification('❌ Ошибка импорта: ' + err.message, 'error');
+async function importCollection(event) {
+    try {
+        // Используем универсальную функцию из settings.js
+        const data = await importFromZip(event);
+        if (!data) return;
+        
+        if (data.type !== 'collection' || !data.collection || !data.references) {
+            throw new Error('Неверный формат файла коллекции');
         }
-    };
-    reader.readAsText(file);
+        
+        const count = data.references.length;
+        if (!confirm(`Найдено ${count} референсов.\n\nИмпортировать коллекцию "${data.collection.name}"?`)) return;
+        
+        // Проверяем, есть ли коллекция с таким именем
+        let existing = state.collections.find(c => c.name === data.collection.name);
+        if (existing) {
+            if (!confirm(`Коллекция "${data.collection.name}" уже существует.\n\n"OK" — добавить референсы в неё\n"Отмена" — создать коллекцию с суффиксом " (копия)"`)) {
+                data.collection.name = data.collection.name + ' (копия)';
+                // Проверяем, нет ли уже коллекции с новым именем
+                let counter = 1;
+                while (state.collections.some(c => c.name === data.collection.name)) {
+                    data.collection.name = data.collection.name.replace(/ \(копия( \d+)?\)$/, '') + ' (копия ' + counter + ')';
+                    counter++;
+                }
+            } else {
+                // Добавляем в существующую коллекцию
+                const existingCollection = state.collections.find(c => c.name === data.collection.name);
+                if (existingCollection) {
+                    // Импортируем референсы в существующую коллекцию
+                    let added = 0;
+                    data.references.forEach(r => {
+                        const exists = state.references.some(ex => ex.id === r.id);
+                        if (!exists) {
+                            const newRef = {
+                                ...r,
+                                id: 'ref_' + generateUUID(),
+                                collectionId: existingCollection.id,
+                                createdAt: new Date().toISOString()
+                            };
+                            state.references.push(newRef);
+                            existingCollection.referenceIds.push(newRef.id);
+                            added++;
+                        }
+                    });
+                    saveState();
+                    renderCollections();
+                    renderAll();
+                    showNotification(`✅ Добавлено ${added} референсов в коллекцию "${existingCollection.name}"`);
+                    event.target.value = '';
+                    return;
+                }
+            }
+        }
+        
+        // Создаём новую коллекцию
+        const newCollection = addCollection(
+            data.collection.name,
+            data.collection.description || '',
+            data.collection.coverImage || null
+        );
+        
+        // Импортируем схемы, оборудование, шпаргалки (если нет дубликатов)
+        const schemeMap = {};
+        (data.schemes || []).forEach(s => {
+            const exists = state.schemes.some(ex => ex.id === s.id);
+            if (!exists) {
+                const newScheme = addScheme(s);
+                schemeMap[s.id] = newScheme.id;
+            } else {
+                schemeMap[s.id] = s.id;
+            }
+        });
+        
+        const equipmentMap = {};
+        (data.equipment || []).forEach(e => {
+            const exists = state.equipment.some(ex => ex.id === e.id);
+            if (!exists) {
+                const newEq = addEquipment(e);
+                equipmentMap[e.id] = newEq.id;
+            } else {
+                equipmentMap[e.id] = e.id;
+            }
+        });
+        
+        const cheatsheetMap = {};
+        (data.cheatsheets || []).forEach(c => {
+            const exists = state.cheatsheets.some(ex => ex.id === c.id);
+            if (!exists) {
+                const newCs = addCheatsheet(c);
+                cheatsheetMap[c.id] = newCs.id;
+            } else {
+                cheatsheetMap[c.id] = c.id;
+            }
+        });
+        
+        // Импортируем референсы
+        let added = 0;
+        data.references.forEach(r => {
+            // Проверяем дубликаты по ID
+            const exists = state.references.some(ex => ex.id === r.id);
+            if (!exists) {
+                const newSchemeIds = (r.schemeIds || []).map(id => schemeMap[id] || id);
+                const newEquipmentIds = (r.equipmentIds || []).map(id => equipmentMap[id] || id);
+                const newCheatSheetIds = (r.cheatSheetIds || []).map(id => cheatsheetMap[id] || id);
+                
+                const newRef = {
+                    ...r,
+                    id: 'ref_' + generateUUID(),
+                    collectionId: newCollection.id,
+                    schemeIds: newSchemeIds,
+                    equipmentIds: newEquipmentIds,
+                    cheatSheetIds: newCheatSheetIds,
+                    createdAt: new Date().toISOString()
+                };
+                
+                state.references.push(newRef);
+                newCollection.referenceIds.push(newRef.id);
+                added++;
+            }
+        });
+        
+        saveState();
+        renderCollections();
+        renderAll();
+        showNotification(`✅ Импортировано ${added} референсов в коллекцию "${newCollection.name}"`);
+        
+    } catch (err) {
+        showNotification('❌ Ошибка импорта: ' + err.message, 'error');
+    }
+    
     event.target.value = '';
 }
 
@@ -354,7 +388,6 @@ function renderCollectionDetail() {
     const refs = getReferencesByCollection(collectionId);
     const coverImage = getCollectionCover(collection);
     
-    // Шапка коллекции
     let html = `
         <div class="collection-detail-header" style="position:relative;background:var(--bg-card);border-radius:var(--radius);padding:20px;margin-bottom:16px;border:1px solid var(--border-color);">
             <div style="display:flex;align-items:center;gap:16px;">
@@ -372,13 +405,12 @@ function renderCollectionDetail() {
                 </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
-                <input class="search-bar" id="collectionSearch" placeholder="🔍 Поиск внутри коллекции..." oninput="renderCollectionReferences()" style="flex:1;min-width:150px;">
+                <input class="search-bar" id="collectionSearch" placeholder="🔍 Поиск внутри коллекции..." oninput="applyCollectionFilters()" style="flex:1;min-width:150px;">
                 <button class="btn btn-sm btn-outline" onclick="openCollectionGlobalSearch()" style="width:auto;padding:6px 14px;">🌐 Глобальный поиск</button>
             </div>
         </div>
     `;
     
-    // Сетка референсов
     html += `<div id="collectionReferencesGrid" class="references-grid"></div>`;
     
     container.innerHTML = html;
@@ -398,7 +430,6 @@ function renderCollectionReferences() {
     
     let refs = getReferencesByCollection(collectionId);
     
-    // Поиск внутри коллекции
     if (searchQuery) {
         refs = refs.filter(r => {
             const searchable = (r.name + ' ' + r.description + ' ' + (r.tags || []).join(' ')).toLowerCase();
@@ -418,59 +449,57 @@ function renderCollectionReferences() {
         return;
     }
     
-    container.innerHTML = refs.map(ref => {
-        const typeIcons = {
-            single: '👤',
-            pair: '👥',
-            group: '👥'
-        };
-        const colorIcons = {
-            color: '🌈',
-            bw: '⚫'
-        };
-        const framingIcons = {
-            head: '👤',
-            bust: '👤',
-            waist: '👤',
-            knee: '👤',
-            full: '👤'
-        };
-        const poseIcons = {
-            standing: '🧍',
-            sitting: '🪑',
-            lying: '🛌',
-            moving: '🏃',
-            mixed: '🔄'
-        };
-        
-        return `
-            <div class="reference-card" onclick="openReferenceSlider('${ref.id}')">
-                <div class="image-wrapper">
-                    ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" loading="lazy">` : `<div class="no-photo">📸</div>`}
-                    ${ref.isFavorite ? '<span class="favorite-badge">❤️</span>' : ''}
-                    ${ref.isNSFW ? '<span class="nsfw-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(200,50,50,0.85);color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;">🔞</span>' : ''}
+    const typeIcons = {
+        single: '👤',
+        pair: '👥',
+        group: '👥'
+    };
+    const colorIcons = {
+        color: '🌈',
+        bw: '⚫'
+    };
+    const framingIcons = {
+        head: '👤',
+        bust: '👤',
+        waist: '👤',
+        knee: '👤',
+        full: '👤'
+    };
+    const poseIcons = {
+        standing: '🧍',
+        sitting: '🪑',
+        lying: '🛌',
+        moving: '🏃',
+        mixed: '🔄'
+    };
+    
+    container.innerHTML = refs.map(ref => `
+        <div class="reference-card" onclick="openReferenceSlider('${ref.id}')">
+            <div class="image-wrapper">
+                ${ref.image ? `<img src="${ref.image}" alt="${ref.name}" loading="lazy">` : `<div class="no-photo">📸</div>`}
+                ${ref.isFavorite ? '<span class="favorite-badge">❤️</span>' : ''}
+                ${ref.isNSFW ? '<span class="nsfw-badge" style="position:absolute;bottom:8px;left:8px;background:rgba(200,50,50,0.85);color:#fff;padding:2px 8px;border-radius:12px;font-size:10px;z-index:2;">🔞</span>' : ''}
+            </div>
+            <div class="info">
+                <div class="title">${ref.name}</div>
+                <div class="tags">
+                    ${(ref.tags || []).slice(0, 2).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    ${(ref.tags || []).length > 2 ? `<span class="tag">+${(ref.tags || []).length - 2}</span>` : ''}
                 </div>
-                <div class="info">
-                    <div class="title">${ref.name}</div>
-                    <div class="tags">
-                        ${(ref.tags || []).slice(0, 2).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                        ${(ref.tags || []).length > 2 ? `<span class="tag">+${(ref.tags || []).length - 2}</span>` : ''}
-                    </div>
-                    <div class="meta">
-                        <span>${typeIcons[ref.portraitType] || '👤'}</span>
-                        <span>${colorIcons[ref.colorType] || '🌈'}</span>
-                        <span>${framingIcons[ref.framing] || '📐'}</span>
-                        <span>${poseIcons[ref.pose] || '🧍'}</span>
-                    </div>
-                    <div class="meta">
-                        <span>💡 ${ref.schemeIds?.length || 0}</span>
-                        <span>📷 ${ref.equipmentIds?.length || 0}</span>
-                        <span>📋 ${ref.cheatSheetIds?.length || 0}</span>
-                    </div>
+                <div class="meta">
+                    <span>${typeIcons[ref.portraitType] || '👤'}</span>
+                    <span>${colorIcons[ref.colorType] || '🌈'}</span>
+                    <span>${framingIcons[ref.framing] || '📐'}</span>
+                    <span>${poseIcons[ref.pose] || '🧍'}</span>
+                </div>
+                <div class="meta">
+                    <span>💡 ${ref.schemeIds?.length || 0}</span>
+                    <span>📷 ${ref.equipmentIds?.length || 0}</span>
+                    <span>📋 ${ref.cheatSheetIds?.length || 0}</span>
                 </div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `).join('');
 }
 
 // ================================================================
@@ -495,7 +524,6 @@ function openCollectionGlobalSearch() {
 // ================================================================
 
 function addReferenceToCollection(collectionId) {
-    // Открываем модалку добавления референса с предустановленной коллекцией
     showAddReferenceModal(collectionId);
 }
 
