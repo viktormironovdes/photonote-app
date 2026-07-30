@@ -168,12 +168,12 @@
         </div>
 
         <!-- ============================================================
-        ЭКСПОРТ / ИМПОРТ (с ZIP-архивацией)
+        ЭКСПОРТ (СОХРАНЕНИЕ НА УСТРОЙСТВО) И ПОДЕЛИТЬСЯ
         ============================================================ -->
         <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
-            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт / Импорт</div>
+            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт данных</div>
             
-            <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">📤 Экспорт</div>
+            <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">💾 Сохранить на устройство</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-success" onclick="exportAllData()" style="flex:1;min-width:80px;">💾 Все данные</button>
                 <button class="btn btn-sm btn-success" onclick="exportReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
@@ -182,10 +182,28 @@
                 <button class="btn btn-sm btn-success" onclick="exportCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
             </div>
             <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
-                📦 Все файлы упаковываются в ZIP и отправляются через "Поделиться"
+                📁 Сохраняет ZIP-файл в папку "Загрузки" → "PhotoNote"
             </div>
             
-            <div style="font-weight:500;font-size:13px;color:#888;margin:12px 0 4px 0;">📥 Импорт</div>
+            <div style="font-weight:500;font-size:13px;color:#888;margin:12px 0 4px 0;">📤 Поделиться</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <button class="btn btn-sm btn-outline" onclick="shareAllData()" style="flex:1;min-width:80px;">📤 Все данные</button>
+                <button class="btn btn-sm btn-outline" onclick="shareReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
+                <button class="btn btn-sm btn-outline" onclick="shareSchemes()" style="flex:1;min-width:80px;">💡 Схемы</button>
+                <button class="btn btn-sm btn-outline" onclick="shareEquipment()" style="flex:1;min-width:80px;">📷 Оборудование</button>
+                <button class="btn btn-sm btn-outline" onclick="shareCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
+            </div>
+            <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
+                📱 Открывает меню "Поделиться" (Telegram, WhatsApp, ВК и др.)
+            </div>
+        </div>
+
+        <!-- ============================================================
+        ИМПОРТ
+        ============================================================ -->
+        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
+            <div style="font-weight:600;margin-bottom:8px;">📥 Импорт</div>
+            
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('importAllInput').click()" style="flex:1;min-width:80px;">💾 Все данные</button>
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('importReferencesInput').click()" style="flex:1;min-width:80px;">📸 Референсы</button>
