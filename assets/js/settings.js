@@ -1,6 +1,6 @@
 // ================================================================
 // ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ
-// Версия 0.1.3 — разделение "Сохранить" и "Поделиться"
+// Версия 0.1.1 — работа с JSON через Filesystem
 // ================================================================
 
 // ================================================================
@@ -10,11 +10,6 @@
 function isFileSharerAvailable() {
     return window.Capacitor && window.Capacitor.isNativePlatform() && 
            window.Capacitor.Plugins && window.Capacitor.Plugins.FileSharer;
-}
-
-function isZipAvailable() {
-    return window.Capacitor && window.Capacitor.isNativePlatform() && 
-           window.Capacitor.Plugins && window.Capacitor.Plugins.Zip;
 }
 
 function isFilesystemAvailable() {
@@ -94,94 +89,48 @@ function handleAvatarUpload(event) {
 }
 
 // ================================================================
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ СОЗДАНИЯ ZIP ИЗ JSON
+// СОХРАНЕНИЕ НА УСТРОЙСТВО (ЭКСПОРТ) — через Filesystem + FileSharer.save()
 // ================================================================
 
-async function createZipFromJson(jsonString) {
-    if (!isFilesystemAvailable()) {
-        throw new Error('Filesystem не доступен');
-    }
-    
-    if (!isZipAvailable()) {
-        throw new Error('Zip не доступен');
-    }
-    
-    const Filesystem = window.Capacitor.Plugins.Filesystem;
-    const Zip = window.Capacitor.Plugins.Zip;
-    
-    // 1. Сохраняем JSON во временный файл
-    const tempJsonPath = 'temp_data.json';
-    await Filesystem.writeFile({
-        path: tempJsonPath,
-        data: jsonString,
-        directory: 'CACHE',
-        encoding: 'utf8'
-    });
-    
-    // 2. Получаем полный путь
-    const uriResult = await Filesystem.getUri({
-        path: tempJsonPath,
-        directory: 'CACHE'
-    });
-    
-    // 3. Создаём ZIP
-    const zipPath = 'temp_archive.zip';
-    await Zip.zip({
-        source: uriResult.uri,
-        destination: zipPath
-    });
-    
-    // 4. Читаем ZIP как Base64
-    const zipResult = await Filesystem.readFile({
-        path: zipPath,
-        directory: 'CACHE'
-    });
-    const zipBase64 = zipResult.data;
-    
-    // 5. Сохраняем пути для удаления
-    const tempFiles = [tempJsonPath, zipPath];
-    
-    return { zipBase64, tempFiles };
-}
-
-async function cleanupTempFiles(tempFiles) {
-    if (!isFilesystemAvailable()) return;
-    
-    const Filesystem = window.Capacitor.Plugins.Filesystem;
-    for (const path of tempFiles) {
-        try {
-            await Filesystem.deleteFile({
-                path: path,
-                directory: 'CACHE'
-            });
-        } catch (e) {
-            console.warn('⚠️ Не удалось удалить:', path, e);
-        }
-    }
-}
-
-// ================================================================
-// СОХРАНЕНИЕ НА УСТРОЙСТВО (ЭКСПОРТ) — через FileSharer.save()
-// ================================================================
-
-async function saveAsZip(jsonString, filename, title) {
+async function saveJsonToDevice(jsonString, filename, title) {
     try {
-        if (!isFileSharerAvailable()) {
+        // Проверяем доступность плагинов
+        if (!isFilesystemAvailable()) {
+            console.warn('⚠️ Filesystem не доступен, используем fallback');
             fallbackSaveJson(jsonString, filename + '.json');
             return;
         }
         
-        const FileSharer = window.Capacitor.Plugins.FileSharer;
-        let zipBase64;
-        let tempFiles = [];
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
         
-        try {
-            const result = await createZipFromJson(jsonString);
-            zipBase64 = result.zipBase64;
-            tempFiles = result.tempFiles;
-        } catch (zipError) {
-            console.warn('⚠️ ZIP не сработал, сохраняем JSON:', zipError);
-            const jsonBase64 = btoa(unescape(encodeURIComponent(jsonString)));
+        // 1. Сохраняем JSON в Documents
+        const filePath = `PhotoNote/${filename}.json`;
+        console.log('📝 Сохраняем JSON в Documents:', filePath);
+        
+        await Filesystem.writeFile({
+            path: filePath,
+            data: jsonString,
+            directory: 'DOCUMENTS',
+            encoding: 'utf8'
+        });
+        
+        // 2. Получаем URI файла
+        const uriResult = await Filesystem.getUri({
+            path: filePath,
+            directory: 'DOCUMENTS'
+        });
+        console.log('📁 URI файла:', uriResult.uri);
+        
+        // 3. Читаем файл как Base64 для отправки через FileSharer
+        const readResult = await Filesystem.readFile({
+            path: filePath,
+            directory: 'DOCUMENTS'
+        });
+        const jsonBase64 = readResult.data;
+        
+        // 4. Отправляем через FileSharer.save()
+        if (isFileSharerAvailable()) {
+            const FileSharer = window.Capacitor.Plugins.FileSharer;
             await FileSharer.save({
                 filename: `${filename}.json`,
                 base64Data: jsonBase64,
@@ -192,24 +141,10 @@ async function saveAsZip(jsonString, filename, title) {
                 }
             });
             showNotification(`✅ Файл "${filename}.json" сохранён в Загрузки!`, 'success');
-            return;
+        } else {
+            // Запасной вариант: скачиваем через браузер
+            downloadJsonString(jsonString, `${filename}.json`);
         }
-        
-        // Сохраняем ZIP на устройство
-        await FileSharer.save({
-            filename: `${filename}.zip`,
-            base64Data: zipBase64,
-            contentType: 'application/zip',
-            android: {
-                saveDirectory: 'downloads',
-                relativePath: 'PhotoNote'
-            }
-        });
-        
-        // Удаляем временные файлы
-        await cleanupTempFiles(tempFiles);
-        
-        showNotification(`✅ Файл "${filename}.zip" сохранён в Загрузки!`, 'success');
         
     } catch (error) {
         console.error('❌ Ошибка сохранения:', error);
@@ -244,7 +179,7 @@ function fallbackSaveJson(jsonString, filename) {
 // ПОДЕЛИТЬСЯ (ОТПРАВКА ЧЕРЕЗ МЕНЮ) — через FileSharer.share()
 // ================================================================
 
-async function shareAsZip(jsonString, filename, title) {
+async function shareJson(jsonString, filename, title) {
     try {
         if (!isFileSharerAvailable()) {
             fallbackShareJson(jsonString, filename + '.json');
@@ -252,36 +187,15 @@ async function shareAsZip(jsonString, filename, title) {
         }
         
         const FileSharer = window.Capacitor.Plugins.FileSharer;
-        let zipBase64;
-        let tempFiles = [];
+        const base64Data = btoa(unescape(encodeURIComponent(jsonString)));
         
-        try {
-            const result = await createZipFromJson(jsonString);
-            zipBase64 = result.zipBase64;
-            tempFiles = result.tempFiles;
-        } catch (zipError) {
-            console.warn('⚠️ ZIP не сработал, отправляем JSON:', zipError);
-            const jsonBase64 = btoa(unescape(encodeURIComponent(jsonString)));
-            await FileSharer.share({
-                filename: `${filename}.json`,
-                base64Data: jsonBase64,
-                contentType: 'application/json'
-            });
-            showNotification(`✅ Файл "${filename}.json" отправлен!`, 'success');
-            return;
-        }
-        
-        // Отправляем через меню "Поделиться"
         await FileSharer.share({
-            filename: `${filename}.zip`,
-            base64Data: zipBase64,
-            contentType: 'application/zip'
+            filename: `${filename}.json`,
+            base64Data: base64Data,
+            contentType: 'application/json'
         });
         
-        // Удаляем временные файлы
-        await cleanupTempFiles(tempFiles);
-        
-        showNotification(`✅ Файл "${filename}.zip" отправлен!`, 'success');
+        showNotification(`✅ Файл "${filename}.json" отправлен!`, 'success');
         
     } catch (error) {
         console.error('❌ Ошибка:', error);
@@ -309,75 +223,19 @@ function fallbackShareJson(jsonString, filename) {
 }
 
 // ================================================================
-// УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ИМПОРТА ИЗ ZIP
+// ИМПОРТ ИЗ JSON (через Filesystem)
 // ================================================================
 
-async function importFromZip(event) {
+async function importFromJson(event) {
     const file = event.target.files[0];
     if (!file) return;
     
     try {
-        if (!isFilesystemAvailable()) {
-            throw new Error('Filesystem не доступен');
-        }
-        
-        if (!isZipAvailable()) {
-            throw new Error('Zip не доступен');
-        }
-        
-        const Filesystem = window.Capacitor.Plugins.Filesystem;
-        const Zip = window.Capacitor.Plugins.Zip;
-        
-        // 1. Читаем файл как ArrayBuffer и конвертируем в Base64
-        const arrayBuffer = await file.arrayBuffer();
-        const base64Data = btoa(
-            new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-        );
-        
-        // 2. Сохраняем ZIP во временный файл
-        const tempZipPath = 'temp_import.zip';
-        await Filesystem.writeFile({
-            path: tempZipPath,
-            data: base64Data,
-            directory: 'CACHE',
-            encoding: 'base64'
-        });
-        
-        // 3. Получаем полный путь к ZIP
-        const uriResult = await Filesystem.getUri({
-            path: tempZipPath,
-            directory: 'CACHE'
-        });
-        
-        // 4. Распаковываем ZIP
-        const extractPath = 'temp_extract';
-        await Zip.unzip({
-            source: uriResult.uri,
-            destination: extractPath
-        });
-        
-        // 5. Читаем data.json из распакованной папки
-        const jsonResult = await Filesystem.readFile({
-            path: 'data.json',
-            directory: 'CACHE'
-        });
-        const jsonString = jsonResult.data;
-        
-        // 6. Удаляем временные файлы
-        try {
-            await Filesystem.deleteFile({ path: tempZipPath, directory: 'CACHE' });
-            await Filesystem.deleteFile({ path: 'data.json', directory: 'CACHE' });
-            await Filesystem.deleteFile({ path: extractPath, directory: 'CACHE' });
-        } catch (cleanupError) {
-            console.warn('⚠️ Не удалось удалить временные файлы:', cleanupError);
-        }
-        
-        // 7. Парсим JSON
-        const data = JSON.parse(jsonString);
+        const text = await file.text();
+        const data = JSON.parse(text);
         return data;
-        
     } catch (error) {
-        console.error('❌ Ошибка импорта:', error);
+        console.error('❌ Ошибка чтения JSON:', error);
         showNotification('❌ Ошибка при чтении файла: ' + error.message, 'error');
         return null;
     }
@@ -407,7 +265,7 @@ function exportAllData() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_all_data_${getTodayStr()}`;
-    saveAsZip(jsonString, filename, '💾 Все данные PhotoNote');
+    saveJsonToDevice(jsonString, filename, '💾 Все данные PhotoNote');
 }
 
 // ================================================================
@@ -434,7 +292,7 @@ function shareAllData() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_all_data_${getTodayStr()}`;
-    shareAsZip(jsonString, filename, '📤 Все данные PhotoNote');
+    shareJson(jsonString, filename, '📤 Все данные PhotoNote');
 }
 
 // ================================================================
@@ -442,7 +300,7 @@ function shareAllData() {
 // ================================================================
 
 async function importAllData(event) {
-    const data = await importFromZip(event);
+    const data = await importFromJson(event);
     if (!data) return;
     
     try {
@@ -540,7 +398,7 @@ function exportReferences() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_references_${getTodayStr()}`;
-    saveAsZip(jsonString, filename, '📸 Референсы');
+    saveJsonToDevice(jsonString, filename, '📸 Референсы');
 }
 
 function exportSchemes() {
@@ -559,7 +417,7 @@ function exportSchemes() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_schemes_${getTodayStr()}`;
-    saveAsZip(jsonString, filename, '💡 Схемы света');
+    saveJsonToDevice(jsonString, filename, '💡 Схемы света');
 }
 
 function exportEquipment() {
@@ -578,7 +436,7 @@ function exportEquipment() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_equipment_${getTodayStr()}`;
-    saveAsZip(jsonString, filename, '📷 Оборудование');
+    saveJsonToDevice(jsonString, filename, '📷 Оборудование');
 }
 
 function exportCheatsheets() {
@@ -597,7 +455,7 @@ function exportCheatsheets() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_cheatsheets_${getTodayStr()}`;
-    saveAsZip(jsonString, filename, '📋 Шпаргалки');
+    saveJsonToDevice(jsonString, filename, '📋 Шпаргалки');
 }
 
 // ================================================================
@@ -620,7 +478,7 @@ function shareReferences() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_references_${getTodayStr()}`;
-    shareAsZip(jsonString, filename, '📸 Референсы');
+    shareJson(jsonString, filename, '📸 Референсы');
 }
 
 function shareSchemes() {
@@ -639,7 +497,7 @@ function shareSchemes() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_schemes_${getTodayStr()}`;
-    shareAsZip(jsonString, filename, '💡 Схемы света');
+    shareJson(jsonString, filename, '💡 Схемы света');
 }
 
 function shareEquipment() {
@@ -658,7 +516,7 @@ function shareEquipment() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_equipment_${getTodayStr()}`;
-    shareAsZip(jsonString, filename, '📷 Оборудование');
+    shareJson(jsonString, filename, '📷 Оборудование');
 }
 
 function shareCheatsheets() {
@@ -677,15 +535,15 @@ function shareCheatsheets() {
     
     const jsonString = JSON.stringify(data, null, 2);
     const filename = `phonote_cheatsheets_${getTodayStr()}`;
-    shareAsZip(jsonString, filename, '📋 Шпаргалки');
+    shareJson(jsonString, filename, '📋 Шпаргалки');
 }
 
 // ================================================================
-// ИМПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ (из ZIP)
+// ИМПОРТ ОТДЕЛЬНЫХ СУЩНОСТЕЙ
 // ================================================================
 
 async function importReferences(event) {
-    const data = await importFromZip(event);
+    const data = await importFromJson(event);
     if (!data) return;
     
     try {
@@ -725,7 +583,7 @@ async function importReferences(event) {
 }
 
 async function importSchemes(event) {
-    const data = await importFromZip(event);
+    const data = await importFromJson(event);
     if (!data) return;
     
     try {
@@ -764,7 +622,7 @@ async function importSchemes(event) {
 }
 
 async function importEquipment(event) {
-    const data = await importFromZip(event);
+    const data = await importFromJson(event);
     if (!data) return;
     
     try {
@@ -803,7 +661,7 @@ async function importEquipment(event) {
 }
 
 async function importCheatsheets(event) {
-    const data = await importFromZip(event);
+    const data = await importFromJson(event);
     if (!data) return;
     
     try {
