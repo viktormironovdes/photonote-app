@@ -1,22 +1,17 @@
 // ================================================================
 // РАБОТА С РЕФЕРЕНСАМИ
-// Версия 0.1.1 — EXIF-метаданные
+// Версия 0.1.3 — EXIF-метаданные
 // ================================================================
 
 let sliderRefs = [];
 let sliderCurrentIndex = 0;
 let sliderMenuOpen = false;
-let extractedExif = null; // Глобальная переменная для хранения извлечённых EXIF-данных (сырые данные)
+let extractedExif = null;
 
 // ================================================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ФОРМАТИРОВАНИЯ EXIF
 // ================================================================
 
-/**
- * Форматирует фокусное расстояние
- * @param {number|string} value - сырое значение из EXIF
- * @returns {string} отформатированная строка (например, "50 мм")
- */
 function formatFocalLength(value) {
     if (!value) return '';
     const num = parseFloat(value);
@@ -26,11 +21,6 @@ function formatFocalLength(value) {
     return String(value);
 }
 
-/**
- * Форматирует диафрагму
- * @param {number|string} value - сырое значение из EXIF
- * @returns {string} отформатированная строка (например, "f/2.8")
- */
 function formatAperture(value) {
     if (!value) return '';
     const num = parseFloat(value);
@@ -40,15 +30,9 @@ function formatAperture(value) {
     return 'f/' + String(value);
 }
 
-/**
- * Форматирует выдержку
- * @param {number|string} value - сырое значение из EXIF
- * @returns {string} отформатированная строка (например, "1/125 с" или "2 с")
- */
 function formatExposureTime(value) {
     if (!value) return '';
     
-    // Если уже строка и содержит "/" — возможно уже отформатировано
     if (typeof value === 'string' && value.includes('/')) {
         return value + ' с';
     }
@@ -57,45 +41,120 @@ function formatExposureTime(value) {
     if (isNaN(num)) return String(value);
     
     if (num >= 1) {
-        // Если выдержка >= 1 секунды
         return num + ' с';
     } else {
-        // Если выдержка < 1 секунды — преобразуем в формат 1/X
         const denominator = Math.round(1 / num);
         return '1/' + denominator + ' с';
     }
 }
 
-/**
- * Форматирует ISO
- * @param {number|string} value - сырое значение из EXIF
- * @returns {string} отформатированная строка (например, "100")
- */
 function formatISO(value) {
     if (!value) return '';
     return String(value);
 }
 
-/**
- * Форматирует дату
- * @param {string} value - сырое значение из EXIF
- * @returns {string} отформатированная строка
- */
 function formatDateTime(value) {
     if (!value) return '';
     return String(value);
 }
 
-/**
- * Форматирует камеру (Make + Model)
- * @param {string} make - производитель
- * @param {string} model - модель
- * @returns {string} отформатированная строка
- */
 function formatCamera(make, model) {
     const camera = (make + ' ' + model).trim();
     return camera || '';
 }
+
+// ================================================================
+// EXIF-ФУНКЦИЯ (ГЛОБАЛЬНАЯ, ДОСТУПНА ИЗ HTML)
+// ================================================================
+
+window.extractEXIF = function() {
+    console.log('🔍 extractEXIF вызвана');
+    
+    const fileInput = document.getElementById('refImage');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('❌ Сначала загрузите фото');
+        return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+        alert('❌ Файл должен быть изображением');
+        return;
+    }
+
+    // Проверяем, загружена ли библиотека EXIF
+    if (typeof EXIF === 'undefined') {
+        alert('❌ Библиотека EXIF не загружена. Проверьте подключение exif-js.');
+        console.error('❌ EXIF library not loaded');
+        return;
+    }
+
+    showNotification('⏳ Извлечение EXIF...', 'info');
+    console.log('📷 Начинаем чтение EXIF из файла:', file.name);
+
+    EXIF.getData(file, function() {
+        console.log('📷 EXIF.getData вызван');
+        
+        const make = EXIF.getTag(this, 'Make') || '';
+        const model = EXIF.getTag(this, 'Model') || '';
+        const lens = EXIF.getTag(this, 'LensModel') || EXIF.getTag(this, 'Lens') || '';
+        const focalLength = EXIF.getTag(this, 'FocalLength') || '';
+        const aperture = EXIF.getTag(this, 'FNumber') || '';
+        const exposureTime = EXIF.getTag(this, 'ExposureTime') || '';
+        const iso = EXIF.getTag(this, 'ISOSpeedRatings') || '';
+        const dateTime = EXIF.getTag(this, 'DateTime') || '';
+        const flash = EXIF.getTag(this, 'Flash') || 0;
+
+        console.log('📷 EXIF данные:', { make, model, lens, focalLength, aperture, exposureTime, iso, dateTime });
+
+        // СОХРАНЯЕМ СЫРЫЕ ДАННЫЕ
+        extractedExif = {
+            camera: (make + ' ' + model).trim(),
+            lens: lens || '',
+            focalLength: focalLength,
+            aperture: aperture,
+            exposureTime: exposureTime,
+            iso: iso,
+            dateTime: dateTime || '',
+            flash: flash
+        };
+
+        const preview = document.getElementById('exifPreview');
+        const hasData = extractedExif.camera || extractedExif.focalLength || extractedExif.iso;
+        
+        if (hasData) {
+            const formattedCamera = formatCamera(extractedExif.camera, '');
+            const formattedLens = extractedExif.lens || '';
+            const formattedFocal = formatFocalLength(extractedExif.focalLength);
+            const formattedAperture = formatAperture(extractedExif.aperture);
+            const formattedExposure = formatExposureTime(extractedExif.exposureTime);
+            const formattedISO = formatISO(extractedExif.iso);
+            const formattedDate = formatDateTime(extractedExif.dateTime);
+            
+            preview.innerHTML = `
+                <div style="font-weight:600;margin-bottom:4px;">📷 EXIF данные:</div>
+                ${formattedCamera ? `<div>Камера: ${formattedCamera}</div>` : ''}
+                ${formattedLens ? `<div>Объектив: ${formattedLens}</div>` : ''}
+                ${formattedFocal ? `<div>Фокусное расстояние: ${formattedFocal}</div>` : ''}
+                ${formattedAperture ? `<div>Диафрагма: ${formattedAperture}</div>` : ''}
+                ${formattedExposure ? `<div>Выдержка: ${formattedExposure}</div>` : ''}
+                ${formattedISO ? `<div>ISO: ${formattedISO}</div>` : ''}
+                ${formattedDate ? `<div>Дата съёмки: ${formattedDate}</div>` : ''}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">✅ Данные извлечены и будут сохранены</div>
+            `;
+            preview.style.display = 'block';
+            showNotification('✅ EXIF извлечён!', 'success');
+        } else {
+            preview.innerHTML = `
+                <div style="color:var(--text-muted);">⚠️ EXIF данные не найдены в этом файле</div>
+            `;
+            preview.style.display = 'block';
+            extractedExif = null;
+            showNotification('⚠️ EXIF не найден', 'warning');
+        }
+    });
+};
 
 // ================================================================
 // РЕНДЕРИНГ СПИСКА РЕФЕРЕНСОВ
@@ -172,85 +231,6 @@ function renderReferences(references = null, containerId = 'referencesGrid') {
             </div>
         `;
     }).join('');
-}
-
-// ================================================================
-// EXIF-ФУНКЦИИ
-// ================================================================
-
-function extractEXIF() {
-    const fileInput = document.getElementById('refImage');
-    const file = fileInput.files[0];
-    if (!file) {
-        alert('❌ Сначала загрузите фото');
-        return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-        alert('❌ Файл должен быть изображением');
-        return;
-    }
-
-    showNotification('⏳ Извлечение EXIF...', 'info');
-
-    EXIF.getData(file, function() {
-        const make = EXIF.getTag(this, 'Make') || '';
-        const model = EXIF.getTag(this, 'Model') || '';
-        const lens = EXIF.getTag(this, 'LensModel') || EXIF.getTag(this, 'Lens') || '';
-        const focalLength = EXIF.getTag(this, 'FocalLength') || '';
-        const aperture = EXIF.getTag(this, 'FNumber') || '';
-        const exposureTime = EXIF.getTag(this, 'ExposureTime') || '';
-        const iso = EXIF.getTag(this, 'ISOSpeedRatings') || '';
-        const dateTime = EXIF.getTag(this, 'DateTime') || '';
-        const flash = EXIF.getTag(this, 'Flash') || 0;
-
-        // СОХРАНЯЕМ СЫРЫЕ ДАННЫЕ (без форматирования)
-        extractedExif = {
-            camera: (make + ' ' + model).trim(),
-            lens: lens || '',
-            focalLength: focalLength,
-            aperture: aperture,
-            exposureTime: exposureTime,
-            iso: iso,
-            dateTime: dateTime || '',
-            flash: flash
-        };
-
-        // Показываем в модалке ОТФОРМАТИРОВАННЫЕ данные (для красивого отображения)
-        const preview = document.getElementById('exifPreview');
-        const hasData = extractedExif.camera || extractedExif.focalLength || extractedExif.iso;
-        
-        if (hasData) {
-            const formattedCamera = formatCamera(extractedExif.camera, '');
-            const formattedLens = extractedExif.lens || '';
-            const formattedFocal = formatFocalLength(extractedExif.focalLength);
-            const formattedAperture = formatAperture(extractedExif.aperture);
-            const formattedExposure = formatExposureTime(extractedExif.exposureTime);
-            const formattedISO = formatISO(extractedExif.iso);
-            const formattedDate = formatDateTime(extractedExif.dateTime);
-            
-            preview.innerHTML = `
-                <div style="font-weight:600;margin-bottom:4px;">📷 EXIF данные:</div>
-                ${formattedCamera ? `<div>Камера: ${formattedCamera}</div>` : ''}
-                ${formattedLens ? `<div>Объектив: ${formattedLens}</div>` : ''}
-                ${formattedFocal ? `<div>Фокусное расстояние: ${formattedFocal}</div>` : ''}
-                ${formattedAperture ? `<div>Диафрагма: ${formattedAperture}</div>` : ''}
-                ${formattedExposure ? `<div>Выдержка: ${formattedExposure}</div>` : ''}
-                ${formattedISO ? `<div>ISO: ${formattedISO}</div>` : ''}
-                ${formattedDate ? `<div>Дата съёмки: ${formattedDate}</div>` : ''}
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">✅ Данные извлечены и будут сохранены</div>
-            `;
-            preview.style.display = 'block';
-            showNotification('✅ EXIF извлечён!', 'success');
-        } else {
-            preview.innerHTML = `
-                <div style="color:var(--text-muted);">⚠️ EXIF данные не найдены в этом файле</div>
-            `;
-            preview.style.display = 'block';
-            extractedExif = null;
-            showNotification('⚠️ EXIF не найден', 'warning');
-        }
-    });
 }
 
 // ================================================================
@@ -380,7 +360,7 @@ function renderSliderMenu(ref) {
         </div>
     `;
     
-    // EXIF данные (ОТФОРМАТИРОВАННЫЕ при отображении, без иконок)
+    // EXIF данные
     if (ref.exif) {
         const e = ref.exif;
         const hasExif = e.camera || e.focalLength || e.iso || e.aperture || e.exposureTime;
@@ -1058,7 +1038,6 @@ function showAddReferenceModal(collectionId = null) {
 function renderRefCheckboxes(refId = null) {
     const ref = refId ? getReference(refId) : null;
     
-    // Коллекции
     const collectionContainer = document.getElementById('refCollectionContainer');
     if (collectionContainer) {
         if (state.collections.length === 0) {
@@ -1074,7 +1053,6 @@ function renderRefCheckboxes(refId = null) {
         }
     }
     
-    // Схемы
     const schemeContainer = document.getElementById('refSchemeCheckboxes');
     if (state.schemes.length === 0) {
         schemeContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет схем. Сначала создайте схему.</p>';
@@ -1091,7 +1069,6 @@ function renderRefCheckboxes(refId = null) {
         `;
     }
     
-    // Оборудование
     const equipmentContainer = document.getElementById('refEquipmentCheckboxes');
     if (state.equipment.length === 0) {
         equipmentContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет оборудования. Сначала добавьте оборудование.</p>';
@@ -1108,7 +1085,6 @@ function renderRefCheckboxes(refId = null) {
         `;
     }
     
-    // Шпаргалки
     const cheatsheetContainer = document.getElementById('refCheatsheetCheckboxes');
     if (state.cheatsheets.length === 0) {
         cheatsheetContainer.innerHTML = '<p style="padding:0 20px;color:#666;font-size:13px;">Нет шпаргалок. Сначала создайте шпаргалку.</p>';
@@ -1214,7 +1190,6 @@ function saveReferenceData(editId, name, description, image, tags, schemeIds, eq
         showNotification('Референс добавлен!');
     }
     
-    // Очищаем EXIF после сохранения
     extractedExif = null;
     document.getElementById('exifPreview').style.display = 'none';
     
