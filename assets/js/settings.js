@@ -1,6 +1,6 @@
 // ================================================================
 // ПРОФИЛЬ, НАСТРОЙКИ, ЭКСПОРТ/ИМПОРТ
-// Версия 0.1.1 — работа с JSON через Filesystem
+// Версия 0.1.1 — дизайн-система + настройка шрифтов
 // ================================================================
 
 // ================================================================
@@ -18,6 +18,85 @@ function isFilesystemAvailable() {
 }
 
 // ================================================================
+// НАСТРОЙКИ ШРИФТА
+// ================================================================
+
+// Состояние размера шрифта (1-5)
+let fontSizeLevel = 3; // По умолчанию средний
+
+// Маппинг уровней к размерам
+const FONT_SIZES = {
+    1: { // Маленький
+        h1: '20px', h2: '16px', h3: '14px',
+        body: '13px', small: '12px', tiny: '10px', micro: '9px'
+    },
+    2: { // Стандарт
+        h1: '24px', h2: '19px', h3: '16px',
+        body: '14px', small: '13px', tiny: '11px', micro: '10px'
+    },
+    3: { // Средний (по умолчанию)
+        h1: '28px', h2: '22px', h3: '18px',
+        body: '16px', small: '14px', tiny: '12px', micro: '10px'
+    },
+    4: { // Крупный
+        h1: '32px', h2: '26px', h3: '20px',
+        body: '18px', small: '16px', tiny: '13px', micro: '11px'
+    },
+    5: { // Очень крупный
+        h1: '36px', h2: '30px', h3: '24px',
+        body: '20px', small: '18px', tiny: '14px', micro: '12px'
+    }
+};
+
+function loadFontSize() {
+    try {
+        const saved = localStorage.getItem('phonote_fontSize');
+        if (saved) {
+            fontSizeLevel = parseInt(saved);
+            if (fontSizeLevel < 1 || fontSizeLevel > 5) fontSizeLevel = 3;
+        }
+    } catch (e) {
+        fontSizeLevel = 3;
+    }
+    applyFontSize(fontSizeLevel);
+}
+
+function saveFontSize(level) {
+    fontSizeLevel = level;
+    localStorage.setItem('phonote_fontSize', String(level));
+    applyFontSize(level);
+}
+
+function applyFontSize(level) {
+    const sizes = FONT_SIZES[level] || FONT_SIZES[3];
+    const root = document.documentElement;
+    
+    root.style.setProperty('--font-size-h1', sizes.h1);
+    root.style.setProperty('--font-size-h2', sizes.h2);
+    root.style.setProperty('--font-size-h3', sizes.h3);
+    root.style.setProperty('--font-size-body', sizes.body);
+    root.style.setProperty('--font-size-small', sizes.small);
+    root.style.setProperty('--font-size-tiny', sizes.tiny);
+    root.style.setProperty('--font-size-micro', sizes.micro);
+    
+    // Обновляем активную кнопку в интерфейсе
+    document.querySelectorAll('.btn-size').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.level) === level);
+    });
+}
+
+function setFontSize(level) {
+    if (level < 1 || level > 5) return;
+    saveFontSize(level);
+    showNotification(`Размер шрифта: ${['Маленький', 'Стандартный', 'Средний', 'Крупный', 'Очень крупный'][level - 1]}`, 'info');
+}
+
+function getFontSizeLabel(level) {
+    const labels = ['', 'Маленький', 'Стандартный', 'Средний', 'Крупный', 'Очень крупный'];
+    return labels[level] || 'Средний';
+}
+
+// ================================================================
 // ПРОФИЛЬ
 // ================================================================
 
@@ -27,6 +106,14 @@ function loadProfile() {
     
     if (nameInput) nameInput.value = state.user.name || 'Фотограф';
     if (emailInput) emailInput.value = state.user.email || '';
+    
+    // Загружаем настройки шрифта
+    loadFontSize();
+    
+    // Обновляем UI кнопок размера шрифта
+    document.querySelectorAll('.btn-size').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.level) === fontSizeLevel);
+    });
     
     updateAvatarDisplay();
     updateCounts();
@@ -89,12 +176,11 @@ function handleAvatarUpload(event) {
 }
 
 // ================================================================
-// СОХРАНЕНИЕ НА УСТРОЙСТВО (ЭКСПОРТ) — через Filesystem + FileSharer.save()
+// ЭКСПОРТ (СОХРАНЕНИЕ НА УСТРОЙСТВО) — через Filesystem + FileSharer.save()
 // ================================================================
 
 async function saveJsonToDevice(jsonString, filename, title) {
     try {
-        // Проверяем доступность плагинов
         if (!isFilesystemAvailable()) {
             console.warn('⚠️ Filesystem не доступен, используем fallback');
             fallbackSaveJson(jsonString, filename + '.json');
@@ -103,7 +189,6 @@ async function saveJsonToDevice(jsonString, filename, title) {
         
         const Filesystem = window.Capacitor.Plugins.Filesystem;
         
-        // 1. Сохраняем JSON в Documents
         const filePath = `PhotoNote/${filename}.json`;
         console.log('📝 Сохраняем JSON в Documents:', filePath);
         
@@ -114,21 +199,18 @@ async function saveJsonToDevice(jsonString, filename, title) {
             encoding: 'utf8'
         });
         
-        // 2. Получаем URI файла
         const uriResult = await Filesystem.getUri({
             path: filePath,
             directory: 'DOCUMENTS'
         });
         console.log('📁 URI файла:', uriResult.uri);
         
-        // 3. Читаем файл как Base64 для отправки через FileSharer
         const readResult = await Filesystem.readFile({
             path: filePath,
             directory: 'DOCUMENTS'
         });
         const jsonBase64 = readResult.data;
         
-        // 4. Отправляем через FileSharer.save()
         if (isFileSharerAvailable()) {
             const FileSharer = window.Capacitor.Plugins.FileSharer;
             await FileSharer.save({
@@ -142,7 +224,6 @@ async function saveJsonToDevice(jsonString, filename, title) {
             });
             showNotification(`✅ Файл "${filename}.json" сохранён в Загрузки!`, 'success');
         } else {
-            // Запасной вариант: скачиваем через браузер
             downloadJsonString(jsonString, `${filename}.json`);
         }
         
@@ -223,7 +304,7 @@ function fallbackShareJson(jsonString, filename) {
 }
 
 // ================================================================
-// ИМПОРТ ИЗ JSON (через Filesystem)
+// ИМПОРТ ИЗ JSON
 // ================================================================
 
 async function importFromJson(event) {
