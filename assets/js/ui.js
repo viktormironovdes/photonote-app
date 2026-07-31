@@ -1,6 +1,6 @@
 // ================================================================
 // ОТРИСОВКА ИНТЕРФЕЙСА (UI)
-// Версия 0.1.1 — EXIF-метаданные
+// Версия 0.1.1 — дизайн-система + настройка шрифтов
 // ================================================================
 
 // ================================================================
@@ -20,6 +20,52 @@ function updateDebugInfo() {
 }
 setInterval(updateDebugInfo, 1000);
 updateDebugInfo();
+
+// ================================================================
+// ПРИМЕНЕНИЕ НАСТРОЕК ШРИФТА
+// ================================================================
+
+function applyFontSettings() {
+    // Загружаем сохранённый размер шрифта
+    const saved = localStorage.getItem('phonote_fontSize');
+    let level = 3;
+    if (saved) {
+        level = parseInt(saved);
+        if (level < 1 || level > 5) level = 3;
+    }
+    
+    // Применяем размеры
+    const sizes = {
+        1: { h1: '20px', h2: '16px', h3: '14px', body: '13px', small: '12px', tiny: '10px', micro: '9px' },
+        2: { h1: '24px', h2: '19px', h3: '16px', body: '14px', small: '13px', tiny: '11px', micro: '10px' },
+        3: { h1: '28px', h2: '22px', h3: '18px', body: '16px', small: '14px', tiny: '12px', micro: '10px' },
+        4: { h1: '32px', h2: '26px', h3: '20px', body: '18px', small: '16px', tiny: '13px', micro: '11px' },
+        5: { h1: '36px', h2: '30px', h3: '24px', body: '20px', small: '18px', tiny: '14px', micro: '12px' }
+    };
+    
+    const s = sizes[level] || sizes[3];
+    const root = document.documentElement;
+    
+    root.style.setProperty('--font-size-h1', s.h1);
+    root.style.setProperty('--font-size-h2', s.h2);
+    root.style.setProperty('--font-size-h3', s.h3);
+    root.style.setProperty('--font-size-body', s.body);
+    root.style.setProperty('--font-size-small', s.small);
+    root.style.setProperty('--font-size-tiny', s.tiny);
+    root.style.setProperty('--font-size-micro', s.micro);
+    
+    // Обновляем метку текущего размера
+    const labelEl = document.getElementById('currentFontSizeLabel');
+    if (labelEl) {
+        const labels = ['', 'Маленький', 'Стандартный', 'Средний', 'Крупный', 'Очень крупный'];
+        labelEl.textContent = labels[level] || 'Средний';
+    }
+    
+    // Обновляем активную кнопку
+    document.querySelectorAll('.btn-size').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.level) === level);
+    });
+}
 
 // ================================================================
 // НАВИГАЦИЯ
@@ -115,6 +161,7 @@ function navigateTo(page, params = {}) {
             break;
         case 'profile':
             loadProfile();
+            applyFontSettings();
             updateCounts();
             updateStorageSize();
             break;
