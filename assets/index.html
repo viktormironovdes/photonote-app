@@ -48,21 +48,21 @@
             </div>
             
             <!-- Фильтры портретов -->
-            <div class="filter-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-                <select id="filterPortraitType" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+            <div class="filter-row">
+                <select id="filterPortraitType" onchange="applyFilters()">
                     <option value="all">👤 Все типы</option>
                     <option value="single">👤 Одиночный</option>
                     <option value="pair">👥 Парный</option>
                     <option value="group">👥 Групповой</option>
                 </select>
                 
-                <select id="filterColorType" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                <select id="filterColorType" onchange="applyFilters()">
                     <option value="all">🎨 Все</option>
                     <option value="color">🌈 Цветной</option>
                     <option value="bw">⚫ Ч/Б</option>
                 </select>
                 
-                <select id="filterFraming" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                <select id="filterFraming" onchange="applyFilters()">
                     <option value="all">📐 Все кадры</option>
                     <option value="head">👤 Голова</option>
                     <option value="bust">👤 Погрудный</option>
@@ -71,7 +71,7 @@
                     <option value="full">👤 В полный рост</option>
                 </select>
                 
-                <select id="filterPose" onchange="applyFilters()" style="flex:1;min-width:80px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                <select id="filterPose" onchange="applyFilters()">
                     <option value="all">🧘 Все позы</option>
                     <option value="standing">🧍 Стоя</option>
                     <option value="sitting">🪑 Сидя</option>
@@ -80,7 +80,7 @@
                     <option value="mixed">🔄 Смешанная</option>
                 </select>
                 
-                <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);padding:4px 8px;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:var(--font-size-tiny);color:var(--text-secondary);padding:4px 8px;">
                     <input type="checkbox" id="filterNSFW" onchange="applyFilters()" style="width:16px;height:16px;accent-color:var(--accent-green);">
                     🔞 NSFW
                 </label>
@@ -133,7 +133,7 @@
             <img id="avatarImage" style="display:none;" alt="Аватар">
             <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
         </div>
-        <div style="text-align:center;font-size:13px;color:#666;margin-bottom:12px;">Нажмите на аватар, чтобы изменить</div>
+        <div style="text-align:center;font-size:var(--font-size-small);color:var(--text-muted);margin-bottom:12px;">Нажмите на аватар, чтобы изменить</div>
 
         <div class="profile-item">
             <span class="label">👤 Имя</span>
@@ -168,12 +168,31 @@
         </div>
 
         <!-- ============================================================
+        НАСТРОЙКИ ШРИФТА
+        ============================================================ -->
+        <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
+            <div style="font-weight:var(--font-weight-semibold);margin-bottom:8px;font-size:var(--font-size-body);">🔤 Размер шрифта</div>
+            <div class="font-size-controls">
+                <span class="font-size-label">Маленький</span>
+                <button class="btn-size" data-level="1" onclick="setFontSize(1)" style="font-size:12px;">A</button>
+                <button class="btn-size" data-level="2" onclick="setFontSize(2)" style="font-size:14px;">A</button>
+                <button class="btn-size active" data-level="3" onclick="setFontSize(3)" style="font-size:16px;">A</button>
+                <button class="btn-size" data-level="4" onclick="setFontSize(4)" style="font-size:18px;">A</button>
+                <button class="btn-size" data-level="5" onclick="setFontSize(5)" style="font-size:20px;">A</button>
+                <span class="font-size-label">Крупный</span>
+            </div>
+            <div style="font-size:var(--font-size-tiny);color:var(--text-muted);margin-top:6px;text-align:center;">
+                Текущий: <span id="currentFontSizeLabel">Средний</span>
+            </div>
+        </div>
+
+        <!-- ============================================================
         ЭКСПОРТ (СОХРАНЕНИЕ НА УСТРОЙСТВО) И ПОДЕЛИТЬСЯ
         ============================================================ -->
         <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
-            <div style="font-weight:600;margin-bottom:8px;">📂 Экспорт данных</div>
+            <div style="font-weight:var(--font-weight-semibold);margin-bottom:8px;font-size:var(--font-size-body);">📂 Экспорт данных</div>
             
-            <div style="font-weight:500;font-size:13px;color:#888;margin-bottom:4px;">💾 Сохранить на устройство</div>
+            <div style="font-weight:var(--font-weight-medium);font-size:var(--font-size-small);color:var(--text-muted);margin-bottom:4px;">💾 Сохранить на устройство</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-success" onclick="exportAllData()" style="flex:1;min-width:80px;">💾 Все данные</button>
                 <button class="btn btn-sm btn-success" onclick="exportReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
@@ -181,11 +200,11 @@
                 <button class="btn btn-sm btn-success" onclick="exportEquipment()" style="flex:1;min-width:80px;">📷 Оборудование</button>
                 <button class="btn btn-sm btn-success" onclick="exportCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
             </div>
-            <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
-                📁 Сохраняет ZIP-файл в папку "Загрузки" → "PhotoNote"
+            <div style="font-size:var(--font-size-tiny);color:var(--text-muted);text-align:center;margin-top:4px;">
+                📁 Сохраняет JSON-файл в папку "Загрузки" → "PhotoNote"
             </div>
             
-            <div style="font-weight:500;font-size:13px;color:#888;margin:12px 0 4px 0;">📤 Поделиться</div>
+            <div style="font-weight:var(--font-weight-medium);font-size:var(--font-size-small);color:var(--text-muted);margin:12px 0 4px 0;">📤 Поделиться</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-outline" onclick="shareAllData()" style="flex:1;min-width:80px;">📤 Все данные</button>
                 <button class="btn btn-sm btn-outline" onclick="shareReferences()" style="flex:1;min-width:80px;">📸 Референсы</button>
@@ -193,16 +212,16 @@
                 <button class="btn btn-sm btn-outline" onclick="shareEquipment()" style="flex:1;min-width:80px;">📷 Оборудование</button>
                 <button class="btn btn-sm btn-outline" onclick="shareCheatsheets()" style="flex:1;min-width:80px;">📋 Шпаргалки</button>
             </div>
-            <div style="font-size:12px;color:#666;text-align:center;margin-top:4px;">
+            <div style="font-size:var(--font-size-tiny);color:var(--text-muted);text-align:center;margin-top:4px;">
                 📱 Открывает меню "Поделиться" (Telegram, WhatsApp, ВК и др.)
             </div>
         </div>
 
         <!-- ============================================================
-        ИМПОРТ
+        ИМПОРТ (ТОЛЬКО JSON)
         ============================================================ -->
         <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;">
-            <div style="font-weight:600;margin-bottom:8px;">📥 Импорт</div>
+            <div style="font-weight:var(--font-weight-semibold);margin-bottom:8px;font-size:var(--font-size-body);">📥 Импорт</div>
             
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('importAllInput').click()" style="flex:1;min-width:80px;">💾 Все данные</button>
@@ -213,22 +232,22 @@
                 <button class="btn btn-sm btn-outline" onclick="document.getElementById('importCollectionInput').click()" style="flex:1;min-width:80px;">📁 Коллекцию</button>
             </div>
             
-            <input type="file" id="importAllInput" accept=".zip" style="display:none" onchange="importAllData(event)">
-            <input type="file" id="importReferencesInput" accept=".zip" style="display:none" onchange="importReferences(event)">
-            <input type="file" id="importSchemesInput" accept=".zip" style="display:none" onchange="importSchemes(event)">
-            <input type="file" id="importEquipmentInput" accept=".zip" style="display:none" onchange="importEquipment(event)">
-            <input type="file" id="importCheatsheetsInput" accept=".zip" style="display:none" onchange="importCheatsheets(event)">
-            <input type="file" id="importCollectionInput" accept=".zip" style="display:none" onchange="importCollection(event)">
+            <input type="file" id="importAllInput" accept=".json" style="display:none" onchange="importAllData(event)">
+            <input type="file" id="importReferencesInput" accept=".json" style="display:none" onchange="importReferences(event)">
+            <input type="file" id="importSchemesInput" accept=".json" style="display:none" onchange="importSchemes(event)">
+            <input type="file" id="importEquipmentInput" accept=".json" style="display:none" onchange="importEquipment(event)">
+            <input type="file" id="importCheatsheetsInput" accept=".json" style="display:none" onchange="importCheatsheets(event)">
+            <input type="file" id="importCollectionInput" accept=".json" style="display:none" onchange="importCollection(event)">
             
             <button class="btn btn-danger" onclick="if(confirm('Удалить ВСЕ данные?')){localStorage.clear();location.reload();}" style="margin-top:6px;">🗑 Сбросить все данные</button>
         </div>
 
-        <div class="debug-info" style="margin-top:16px;">
+        <div class="debug-info">
             <div>🕒 Текущее время:</div>
             <div class="time" id="debugTime">--:--:--</div>
-            <div style="margin-top:4px;font-size:12px;color:#666;" id="debugDate">--</div>
-            <div style="margin-top:4px;font-size:11px;color:#555;" id="debugStorageSize">--</div>
-            <div style="margin-top:6px;font-size:12px;color:#555;border-top:1px solid var(--border-color);padding-top:6px;">
+            <div style="margin-top:4px;font-size:var(--font-size-tiny);color:var(--text-muted);" id="debugDate">--</div>
+            <div style="margin-top:4px;font-size:var(--font-size-tiny);color:var(--text-muted);" id="debugStorageSize">--</div>
+            <div style="margin-top:6px;font-size:var(--font-size-tiny);color:var(--text-muted);border-top:1px solid var(--border-color);padding-top:6px;">
                 📌 PhotoNote v0.1.1
             </div>
         </div>
