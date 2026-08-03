@@ -1,4 +1,4 @@
-name: Build PhotoNote APK
+name: Build PhytoNote APK
 
 on:
   push:
@@ -15,48 +15,36 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '22'
+        node-version: '18'
 
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '21'
+        java-version: '17'
 
     - name: Create Capacitor project
       run: |
         echo '{
-          "name": "PhotoNote",
+          "name": "PhytoNote",
           "version": "1.0.0",
           "scripts": {
-            "build": "echo \"Building PhotoNote...\""
+            "build": "echo \"Building PhytoNote...\""
           },
           "dependencies": {
-            "@capacitor/filesystem": "^8.0.0",
-            "@capgo/capacitor-file-sharer": "^8.0.0"
+            "@capacitor/share": "^6.0.0",
+            "@capacitor/filesystem": "^6.0.0"
           },
           "devDependencies": {
-            "@capacitor/cli": "^8.0.0",
-            "@capacitor/android": "^8.0.0"
+            "@capacitor/cli": "^6.0.0",
+            "@capacitor/android": "^6.0.0"
           }
         }' > package.json
 
     - name: Install dependencies
       run: npm install
 
-    - name: Create capacitor.config.json
-      run: |
-        cat > capacitor.config.json << 'EOF'
-        {
-          "appId": "com.phonote.app",
-          "appName": "PhotoNote",
-          "webDir": "www",
-          "bundledWebRuntime": false
-        }
-        EOF
-        echo "✅ capacitor.config.json created"
-
-    - name: Copy web assets
+    - name: Copy web assets BEFORE Capacitor init
       run: |
         mkdir -p www
         cp -r assets/* www/
@@ -64,11 +52,12 @@ jobs:
 
     - name: Initialize Capacitor and add Android
       run: |
-        npx cap init "PhotoNote" "com.phonote.app" --web-dir www
+        npx cap init "PhytoNote" "com.phytonote.app" --web-dir www
         npx cap add android
+        npx cap update
         npx cap sync
 
-    - name: Setup app icons
+    - name: Copy all icons to correct Android folders
       run: |
         echo "🎨 Setting up app icons..."
         
@@ -78,7 +67,7 @@ jobs:
         mkdir -p android/app/src/main/res/mipmap-xxhdpi
         mkdir -p android/app/src/main/res/mipmap-xxxhdpi
         
-        ICON_PATH="www/icons"
+        ICON_PATH="assets/phytonote/icons"
         
         if [ -d "$ICON_PATH" ]; then
           echo "📂 Found icons in: $ICON_PATH"
@@ -95,55 +84,181 @@ jobs:
           [ -f "$ICON_PATH/icon-144.png" ] && cp "$ICON_PATH/icon-144.png" android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
           [ -f "$ICON_PATH/icon-192.png" ] && cp "$ICON_PATH/icon-192.png" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           
-          echo "✅ Icons installed!"
+          echo "✅ All icons installed!"
         else
-          echo "⚠️ Icon folder not found at $ICON_PATH"
+          echo "⚠️ Icon folder not found at $ICON_PATH, using fallback..."
+          if [ -f "assets/icon-192.png" ]; then
+            cp assets/icon-192.png android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            cp assets/icon-192.png android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            cp assets/icon-192.png android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            cp assets/icon-192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            cp assets/icon-192.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          fi
         fi
 
-    - name: Build debug APK
+    - name: Fix AndroidManifest with correct permissions and icon
       run: |
-        cd android
-        chmod +x ./gradlew
-        ./gradlew assembleDebug
+        cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.phytonote.app">
 
-    - name: Create keystore
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:roundIcon="@mipmap/ic_launcher_round"
+                android:supportsRtl="true"
+                android:theme="@style/AppTheme"
+                android:requestLegacyExternalStorage="true">
+
+                <activity
+                    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+                    android:name="com.phytonote.app.MainActivity"
+                    android:label="@string/title_activity_main"
+                    android:theme="@style/AppTheme.NoActionBarLaunch"
+                    android:launchMode="singleTask"
+                    android:exported="true">
+
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+
+                </activity>
+
+                <provider
+                    android:name="androidx.core.content.FileProvider"
+                    android:authorities="${applicationId}.fileprovider"
+                    android:exported="false"
+                    android:grantUriPermissions="true">
+                    <meta-data
+                        android:name="android.support.FILE_PROVIDER_PATHS"
+                        android:resource="@xml/file_paths" />
+                </provider>
+            </application>
+
+        </manifest>
+        EOF
+        echo "✅ AndroidManifest.xml updated"
+
+    - name: Create file_paths.xml for file sharing
       run: |
+        mkdir -p android/app/src/main/res/xml
+        cat > android/app/src/main/res/xml/file_paths.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <paths xmlns:android="http://schemas.android.com/apk/res/android">
+            <external-path name="external" path="." />
+            <external-files-path name="external_files" path="." />
+            <cache-path name="cache" path="." />
+            <external-cache-path name="external_cache" path="." />
+            <files-path name="files" path="." />
+        </paths>
+        EOF
+        echo "✅ file_paths.xml created"
+
+    - name: Create keystore for signing
+      run: |
+        echo "🔐 Creating keystore..."
         keytool -genkey -v \
-          -keystore phonote.keystore \
-          -alias phonote \
+          -keystore phytonote.keystore \
+          -alias phytonote \
           -keyalg RSA \
           -keysize 2048 \
           -validity 10000 \
-          -storepass phonote123 \
-          -keypass phonote123 \
-          -dname "CN=PhotoNote, OU=App, O=PhotoNote, L=City, S=State, C=US"
+          -storepass phytonote123 \
+          -keypass phytonote123 \
+          -dname "CN=PhytoNote, OU=App, O=PhytoNote, L=City, S=State, C=US"
+        echo "✅ Keystore created"
 
-    - name: Install apksigner
+    - name: Configure signing in build.gradle
       run: |
-        sudo apt-get update
-        sudo apt-get install -y apksigner
+        cat > android/app/build.gradle << 'EOF'
+        apply plugin: 'com.android.application'
 
-    - name: Sign the APK
-      run: |
-        apksigner sign \
-          --ks phonote.keystore \
-          --ks-pass pass:phonote123 \
-          --key-pass pass:phonote123 \
-          android/app/build/outputs/apk/debug/app-debug.apk
-        
-        mkdir -p android/app/build/outputs/apk/release/
-        cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/release/app-release.apk
-        
-        echo "✅ APK signed successfully!"
+        android {
+            compileSdkVersion 34
+            namespace "com.phytonote.app"
+            
+            defaultConfig {
+                applicationId "com.phytonote.app"
+                minSdkVersion 23
+                targetSdkVersion 34
+                versionCode 2
+                versionName "1.0.0"
+                testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+            }
+            
+            signingConfigs {
+                release {
+                    storeFile file("../../../phytonote.keystore")
+                    storePassword "phytonote123"
+                    keyAlias "phytonote"
+                    keyPassword "phytonote123"
+                }
+            }
+            
+            buildTypes {
+                release {
+                    signingConfig signingConfigs.release
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+                }
+            }
+        }
 
-    - name: Verify APK signature
+        repositories {
+            flatDir {
+                dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+            }
+        }
+
+        dependencies {
+            implementation fileTree(include: ['*.jar'], dir: 'libs')
+            implementation "androidx.appcompat:appcompat:1.6.1"
+            implementation "com.google.android.material:material:1.9.0"
+            implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+            implementation project(':capacitor-android')
+            implementation project(':capacitor-cordova-android-plugins')
+        }
+
+        apply from: 'capacitor.build.gradle'
+        EOF
+        echo "✅ build.gradle configured"
+
+    - name: Update versionCode
       run: |
-        apksigner verify android/app/build/outputs/apk/release/app-release.apk
-        echo "✅ APK signature verified!"
+        GRADLE_PATH="android/app/build.gradle"
+        if [ -f "$GRADLE_PATH" ]; then
+          CURRENT_VERSION=$(grep -o 'versionCode [0-9]*' "$GRADLE_PATH" | awk '{print $2}')
+          if [ -z "$CURRENT_VERSION" ]; then
+            CURRENT_VERSION=1
+          fi
+          NEW_VERSION=$((CURRENT_VERSION + 1))
+          sed -i "s/versionCode [0-9]*/versionCode $NEW_VERSION/" "$GRADLE_PATH"
+          echo "✅ Version updated: versionCode=$NEW_VERSION"
+        fi
+
+    - name: Build Android APK
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew assembleRelease
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: phonote-apk
+        name: phytonote-apk
         path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 7
+
+    - name: Upload keystore backup
+      uses: actions/upload-artifact@v4
+      with:
+        name: phytonote-keystore-backup
+        path: phytonote.keystore
         retention-days: 7
